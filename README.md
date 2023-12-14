@@ -43,9 +43,10 @@ python data_reaper.py
         - `-s`: Scan and enumerate targets listed in the result.txt file.\
         - `-r`: Reap subdirectories and files from harvested targets (requires -s).\
         - `-x`: Execute all actions: Perform a Shodan query, scan targets, and reap data (equivalent to -q -s -r).\
-        - `-t`: Disable Tor support: Do not use Tor for anonymized scanning.\
+        - `-n`: Disable Tor support: Do not use Tor for anonymized scanning.\
         - `-i`: Ignore history file: Scan all targets again, regardless of past scans.\
-        - `-p [port number]`: Port number to do query or scan on. Default 8000.
+        - `-p [port number]`: Port number to do query or scan on. Default 8000.\
+        - `-t [target ip]`: Target ip to scan. Assumes scan unless -r specified.
 
 - Output:
     - Shodan query results are stored in the result.txt file.
@@ -64,7 +65,7 @@ python data_reaper.py -x
 ````
 - Ignore history and scan all targets without Tor:
 ````
-python data_reaper.py -s -i -t
+python data_reaper.py -s -i -n
 ````
 ## Disclaimer:
 
