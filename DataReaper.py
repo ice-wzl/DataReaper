@@ -41,7 +41,8 @@ def banner():
  `:::::`::::::::::::;'`:;::#                O 
   `:::::`::::::::;' /  / `:#                  
    ::::::`:::::;'  /  /   `#              v.1.0.0
-                                  Made by ice-wzl
+                                  Made by Aznable,
+                                          ice-wzl
     """+Fore.RESET
     )
     
@@ -219,7 +220,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
                     prog='Data Scraper',
                     description='Querys shodan for indexable http servers',
-                    epilog='Made by ice-wzl modified by Aznable')
+                    epilog='Made by Aznable and ice-wzl')
     parser.add_argument('-q','--query',action='store_true',help="Conduct shodan query and update result.txt")
     parser.add_argument('-s','--scan',action='store_true',help="Conduct scans and enumeration of targets in result.txt")
     parser.add_argument('-r','--reap',action='store_true',help="If positive enumeration reap all files from target")
