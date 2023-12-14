@@ -164,7 +164,7 @@ def do_request(reap,notor,ig_hist,port,targ):
                 print(Fore.RESET+f"{target.strip()}, Status Code: {r.status_code}")
                 w_history.write(target.strip()+"\n")
                 key = key_words(r.content,target.strip())
-                if(key and reap):
+                if((key and reap) or (targ and reap)):
                     print(f"{target.strip()} contains:")
                     for line in r.content.decode().split("\n"):
                         if("<a href=\"" in line):
