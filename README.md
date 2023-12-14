@@ -38,18 +38,19 @@ pip install -r requirements.txt
 ````
 python data_reaper.py
 ````
-- Options:
-        - `-q`: Perform a Shodan query and update the result.txt file.
-        - `-s`: Scan and enumerate targets listed in the result.txt file.
-        - `-r`: Reap subdirectories and files from harvested targets (requires -s).
-        - `-x`: Execute all actions: Perform a Shodan query, scan targets, and reap data (equivalent to -q -s -r).
-        - `-t`: Disable Tor support: Do not use Tor for anonymized scanning.
-        - `-i`: Ignore history file: Scan all targets again, regardless of past scans.
+- Options:\
+        - `-q`: Perform a Shodan query and update the result.txt file.\
+        - `-s`: Scan and enumerate targets listed in the result.txt file.\
+        - `-r`: Reap subdirectories and files from harvested targets (requires -s).\
+        - `-x`: Execute all actions: Perform a Shodan query, scan targets, and reap data (equivalent to -q -s -r).\
+        - `-t`: Disable Tor support: Do not use Tor for anonymized scanning.\
+        - `-i`: Ignore history file: Scan all targets again, regardless of past scans.\
+        - `-p [port number]`: Port number to do query or scan on. Default 8000.
 
 - Output:
-- Shodan query results are stored in the result.txt file.
-- A history of scanned targets is maintained in the history.txt file.
-- Harvested files are saved in directories based on the target IP address.
+    - Shodan query results are stored in the result.txt file.
+    - A history of scanned targets is maintained in the history.txt file.
+    - Harvested files are saved in directories based on the target IP address.
 
 ## Examples:
 
