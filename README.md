@@ -23,7 +23,7 @@ source venv/bin/activate
 ````
 ### Dependencies: Install required packages from requirements.txt.
 ````
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ````
 - Non-Free Shodan Membership:
     - A paid Shodan membership is required to access the API and use this program's full functionality.
@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 - Run the program:
 ````
-python data_reaper.py
+python3 DataReaper.py
 ````
 - Options:\
         - `-q`: Perform a Shodan query and update the result.txt file.\
