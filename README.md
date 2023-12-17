@@ -1,5 +1,5 @@
 # DataReaper (DARE)
-![1 GU3_tyQ8MXi1ttlQOh3ZAA](https://github.com/ice-wzl/DataReaper/assets/75596877/c537207c-1d48-4766-b7e3-91a1f896ec04)
+
 <p align="center">
   <img src="https://github.com/ice-wzl/DataReaper/assets/75596877/c537207c-1d48-4766-b7e3-91a1f896ec04"/>
 </p>
