@@ -37,6 +37,11 @@ pip3 install -r requirements.txt
     - Enter your API key as the only line in the file.
 
 ## Usage:
+- Utilizing Tor for making requests is the default, if you plan on using the default option of Tor, ensure it is started on your system. Install Tor if it is not already present on your system.
+````
+sudo apt install tor
+sudo systemctl start tor
+````
 
 - Run the program:
 ````
