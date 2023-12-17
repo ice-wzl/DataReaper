@@ -1,6 +1,6 @@
-# DataReaper
+# DataReaper (DARE)
 
-# DataReaper: Documentation
+# DataReaper (DARE): Documentation
 
 DataReaper is a powerful Python tool designed to harvest data from publicly accessible HTTP servers. It combines the capabilities of Shodan search with web scraping techniques to efficiently gather information from targeted websites.
 
