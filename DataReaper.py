@@ -40,7 +40,7 @@ def banner():
  ::::`:::::::`;::::::::;:::#                OO
  `:::::`::::::::::::;'`:;::#                O 
   `:::::`::::::::;' /  / `:#                  
-   ::::::`:::::;'  /  /   `#              v.1.0.0
+   ::::::`:::::;'  /  /   `#              v.2.0.1
                                   Made by Aznable,
                                           ice-wzl
     """+Fore.RESET
@@ -55,13 +55,17 @@ def setup_api():
     return api
 
 def do_query(api, query):
-    query = "".join(query)
-    print("Query {}".format(query))
-    result = api.search(query)
-    with open("result.txt", "w+") as fp:
-        for service in result["matches"]:
-            fp.write(service["ip_str"] + "\n")
-    fp.close()
+    try:
+        query = "".join(query)
+        print("Query {}".format(query))
+        result = api.search(query)
+        with open("result.txt", "w+") as fp:
+            for service in result["matches"]:
+                fp.write(service["ip_str"] + "\n")
+        fp.close()
+    except shodan.exception.APIError as e:
+            print("Invalid Shodan API Key...")
+            sys.exit(2)
 
 def key_words(content,ip_addr):
     interesting_words = [
@@ -161,7 +165,7 @@ def do_request(reap,notor,ig_hist,port,targ):
         try:
             if(target.strip()+"\n" not in history or ig_hist):
                 r = s.get(f"http://{target.strip()}:{port}/",timeout=10)
-                print(Fore.RESET+f"{target.strip()}, Status Code: {r.status_code}")
+                print(Fore.RESET+f"http://{target.strip()}:{port}/ --> Status Code: {r.status_code}")
                 w_history.write(target.strip()+"\n")
                 key = key_words(r.content,target.strip())
                 if((key and reap) or (targ and reap)):
