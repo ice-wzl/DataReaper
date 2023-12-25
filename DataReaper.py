@@ -160,7 +160,21 @@ def do_request(reap,notor,ig_hist,port,targ):
     w_history = open("history.txt", "w+")
     w_history.writelines(history)
 
-    print("Current histfile: \n"+str(history))
+    print("Current histfile:")
+    lc=0
+    for ip in history:
+        # If ip is too short add an extra tab
+        if(len(ip)<=8):
+            ext="\t"
+        else:
+            ext=""
+
+        if(lc==3):
+            print(f"{ip.strip()}\t{ext}\n",end="")
+            lc=0
+        else:
+            print(f"{ip.strip()}\t{ext}",end ="") 
+            lc+=1
     for target in targets:
         try:
             if(target.strip()+"\n" not in history or ig_hist):
@@ -271,6 +285,9 @@ if __name__ == "__main__":
     parser.add_argument('-t','--target',help="Specify a target to Scan/Reap")
     args=parser.parse_args()
     # conduct the shodan query to get the results
+    if len(sys.argv)==1:
+        parser.print_help()
+        sys.exit(1)
     reap = (args.reap or args.full)
     if(args.query or args.full):
         if(args.port):
