@@ -40,7 +40,7 @@ def banner():
  ::::`:::::::`;::::::::;:::#                OO
  `:::::`::::::::::::;'`:;::#                O 
   `:::::`::::::::;' /  / `:#                  
-   ::::::`:::::;'  /  /   `#              v.2.0.1
+   ::::::`:::::;'  /  /   `#              v.2.1.0
                                   Made by Aznable,
                                           ice-wzl
     """+Fore.RESET
@@ -122,6 +122,12 @@ def key_words(content,ip_addr):
         "wg/",
         "wireguard",
         "wormhole",
+        "key.pem",
+        "crt.pem",
+        "key.key",
+        "crt.key",
+        "cert.crt", 
+        "password"
     ]
 
     word_found = False
@@ -195,28 +201,6 @@ def do_request(reap,notor,ig_hist,port,targ):
                             harvest(s,target.strip(),r.content.decode(),"/",False,port)
                         else:
                             harvest(s,target.strip(),r.content.decode(),"/",True,port)
-
-                #untested addition
-                """
-                if ".ssh" in key:
-                    r = s.get(f"http://{target.strip()}:{port}/.ssh/",timeout=10)
-                    print(Fore.RESET+f"http://{target.strip()}:{port}/.ssh/ --> Status code: {r.status_code}")
-                    key = key_words(r.content, target.strip())
-                    if((key and reap) or (targ and reap)):
-                    print(f"{target.strip()} contains:")
-                    for line in r.content.decode().split("\n"):
-                        if("<a href=\"" in line):
-                            file = line.split("href=\"")[1].split("\"")[0]
-                            print("\t"+file)
-                    print(Fore.RESET+"\n(X for yes and automatically gather subdirectories)")
-                    harvester = input(Fore.RESET+"Would you like to reap (Y/n/X)> ")
-                    if(harvester.upper() == 'Y' or harvester.upper() == 'X'):
-                        if(harvester.upper()=='Y'):
-                            harvest(s,target.strip(),r.content.decode(),"/",False,port)
-                        else:
-                            harvest(s,target.strip(),r.content.decode(),"/",True,port)
-                """
-                #end untested addition
                 
         except (ConnectionError, Timeout, RequestException):
             print(Fore.RED + f"{target.strip()}, is not responsive")
@@ -283,27 +267,54 @@ if __name__ == "__main__":
     parser.add_argument('-i','--ig_hist',action='store_true',help="Ignore history file")
     parser.add_argument('-p','--port',help="Specify port number (Default 8000)")
     parser.add_argument('-t','--target',help="Specify a target to Scan/Reap")
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-K', '--key', action='store_true', help='conduct query for exposed .pem files')
+    group.add_argument('-P', '--python', action='store_true', help='conduct query for exposed python http.servers')
+
     args=parser.parse_args()
+
     # conduct the shodan query to get the results
-    if len(sys.argv)==1:
+    if len(sys.argv)==2:
         parser.print_help()
         sys.exit(1)
     reap = (args.reap or args.full)
-    if(args.query or args.full):
-        if(args.port):
-            do_query(setup_api(), f'Title:"Directory listing for /" port:{args.port}')
-        else:
-            do_query(setup_api(), 'Title:"Directory listing for /" port:8000')
+    if(args.key):
+        if(args.query or args.full):
+            if(args.port):
+                do_query(setup_api(), f'http.title:"Index of /" http.html:"key.pem", port:{args.port}')
+            else:
+                do_query(setup_api(), 'http.title:"Index of /" http.html:"key.pem", port:80')
         sleep(1.0)
-    # perform the requests which will loop through the results in results.txt
-    if(args.target):
-        if(args.port):
-            do_request(args.reap,args.notor,True,args.port,args.target)
-        else:
-            do_request(args.reap,args.notor,True,"8000",args.target)
+    
+        if(args.target):
+            if(args.port):
+                do_request(args.reap,args.notor,True,args.port,args.target)
+            else:
+                do_request(args.reap,args.notor,True,"80",args.target)
 
-    if(args.scan or args.full):
-        if(args.port):
-            do_request(args.reap,args.notor,args.ig_hist,args.port,False)
-        else:
-            do_request(args.reap,args.notor,args.ig_hist,"8000",False)
+        if(args.scan or args.full):
+            if(args.port):
+                do_request(args.reap,args.notor,args.ig_hist,args.port,False)
+            else:
+                do_request(args.reap,args.notor,args.ig_hist,"80",False)
+    
+    elif(args.python):
+        if(args.query or args.full):
+            if(args.port):
+                do_query(setup_api(), f'Title:"Directory listing for /" port:{args.port}')
+            else:
+                do_query(setup_api(), 'Title:"Directory listing for /" port:8000')
+            sleep(1.0)
+        # perform the requests which will loop through the results in results.txt
+        if(args.target):
+            if(args.port):
+                do_request(args.reap,args.notor,True,args.port,args.target)
+            else:
+                do_request(args.reap,args.notor,True,"8000",args.target)
+
+        if(args.scan or args.full):
+            if(args.port):
+                do_request(args.reap,args.notor,args.ig_hist,args.port,False)
+            else:
+                do_request(args.reap,args.notor,args.ig_hist,"8000",False)
