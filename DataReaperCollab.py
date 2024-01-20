@@ -111,6 +111,8 @@ def key_words(content,ip_addr):
         "log4j",
         "malware",
         "metasploit",
+        ".msf4",
+        ".msf6",
         "mrlapis",
         "nessus",
         "nmap",
