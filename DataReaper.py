@@ -99,6 +99,8 @@ def key_words(content,ip_addr):
         "malware",
         "metasploit",
         "mrlapis",
+        ".msf4",
+        ".msf6",
         "nessus",
         "nmap",
         "nucleigorailgun",
@@ -179,7 +181,7 @@ def do_request(reap,notor,ig_hist,port,targ):
             print(f"{ip.strip()}\t{ext}\n",end="")
             lc=0
         else:
-            print(f"{ip.strip()}\t{ext}",end ="") 
+            print(f"{ip.strip()}\t{ext}\n",end ="") 
             lc+=1
     for target in targets:
         try:
