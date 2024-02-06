@@ -112,6 +112,7 @@ def key_words(content,ip_addr):
         "passwd",
         "payload",
         "pt/",
+        "pp_id_rsa.ppk",
         "qakbot",
         "qbot",
         "ransom",
