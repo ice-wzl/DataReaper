@@ -189,17 +189,17 @@ def do_request(reap,notor,ig_hist,port,targ):
         else:
             print(f"{ip.strip()}\t{ext}\n",end ="") 
             lc+=1
-        # testing out look and feel of a new line here
-        print()
     for target in targets:
         try:
             if(target.strip()+"\n" not in history or ig_hist):
                 r = s.get(f"http://{target.strip()}:{port}/",timeout=10)
                 print(Fore.RESET+f"http://{target.strip()}:{port}/ --> Status Code: {r.status_code}")
                 w_history.write(target.strip()+"\n")
+                # will return bool True | False depending if key word was found
                 key = key_words(r.content,target.strip())
                 if((key and reap) or (targ and reap)):
                     print(f"{target.strip()} contains:")
+                    print(r.content.decode().split("\n"))
                     for line in r.content.decode().split("\n"):
                         if("<a href=\"" in line):
                             file = line.split("href=\"")[1].split("\"")[0]
@@ -211,25 +211,6 @@ def do_request(reap,notor,ig_hist,port,targ):
                             harvest(s,target.strip(),r.content.decode(),"/",False,port)
                         else:
                             harvest(s,target.strip(),r.content.decode(),"/",True,port)
-                if ".ssh" in content.decode().split("\n"):
-                    r = s.get("http://{target.strip()}:{port}/",timeout=10)
-                    print(Fore.RESET+f"http://{target.strip()}:{port}/.ssh/ --> Status Code: {r.status_code}")
-                    key = key_words(r.content,target.strip())
-                    if((key and reap) or (targ and reap)):
-                        print(f"{target.strip()} contains:")
-                        for line in r.content.decode().split("\n"):
-                            if("<a href=\"" in line):
-                                file = line.split("href=\"")[1].split("\"")[0]
-                                print("\t"+file)
-                        print(Fore.RESET+"\n(X for yes and automatically gather subdirectories)")
-                        harvester = input(Fore.RESET+"Would you like to reap (Y/n/X)> ")
-                        if(harvester.upper() == 'Y' or harvester.upper() == 'X'):
-                            if(harvester.upper()=='Y'):
-                                harvest(s,target.strip(),r.content.decode(),"/",False,port)
-                            else:
-                                harvest(s,target.strip(),r.content.decode(),"/",True,port)
-
-
         except (ConnectionError, Timeout, RequestException):
             print(Fore.RED + f"{target.strip()}, is not responsive")
     w_history.close()
