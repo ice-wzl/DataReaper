@@ -1,6 +1,29 @@
 #!/usr/bin/python3
 from colorama import Fore
 
+def ssh_words(content, ip_addr):
+    interesting_words = [
+        ".ssh/",
+        "id_rsa",
+        "id_ecdsa",
+        "id_dsa",
+        "id_ed25519",
+        "pp_id_rsa.ppk",
+        "ssh_rsa.pem"
+    ]
+    word_found = False
+    content = content.decode().lower()
+    interesting_find = ""
+    for i in interesting_words:
+        if i in content:
+            word_found = True
+            print(Fore.GREEN + "\t{} found at {}".format(i, ip_addr.strip()))
+            if (interesting_find == ""):
+                interesting_find = i
+            else:
+                interesting_find = interesting_find + "," + i
+    return word_found, interesting_find
+
 
 def key_words(content, ip_addr):
     interesting_words = [
