@@ -1,6 +1,7 @@
 import requests
 import os
 import argparse
+import ipaddress
 from simple_term_menu import TerminalMenu
 from time import sleep
 from requests.exceptions import ConnectionError, Timeout, RequestException
@@ -10,103 +11,104 @@ from datetime import datetime
 from src.do_setup import *
 from src.do_keywords import *
 
-def do_request(reap, notor, port, targ):
-    # Setup session
+def validate_ip(ip_string) -> bool:
+    try:
+        ip_obj = ipaddress.ip_address(ip_string)
+        return True
+    except ValueError as e:
+        print(f"Error invalid ip address: {e}")
+        return False
+
+def validate_port(port) -> bool:
+    try:
+        port_int = int(port)
+        if port_int > 65535 or port_int < 0:
+            print(f"[-] Error invalid port: {port}")
+            return False
+        return True
+    except ValueError as e:
+        print(f"[-] Error invalid port: {port}")
+        return False
+
+
+def session_tor_setup(socks_proxy_host_port):
+    if ":" not in socks_proxy_host_port:
+        print("Error: specify socks proxy in <ip>:<port> format")
+        sys.exit(2)
+
+    socks_proxy_parts = socks_proxy_host_port.split(":")
+    if not validate_port(socks_proxy_parts[-1]):
+        sys.exit(3)
+    if not validate_ip(socks_proxy_parts[0]):
+        sys.exit(4)
     s = requests.Session()
-    pre = requests.get("http://icanhazip.com")
-    print(f"Current External IP: {pre.content.decode()}", end="")
-    if (notor == False):
-        s.proxies.update({'http': 'socks5://127.0.0.1:9050'})
-        post = s.get("http://icanhazip.com")
-        print(f"TOR External IP: {post.content.decode()}", end="")
-        if (post.content == pre.content):
-            print("\nERR: With and without tor are same.")
-            print("If you are not running tor specify -t")
-            exit()
+    s.proxies.update({'http': f'socks5://{socks_proxy_host_port}'})
+    return s
 
-    if (targ == False):
-        fp = open("result.txt", "r")
-        targets = fp.readlines()
-        fp.close()
-    else:
-        targets = []
-        targets.append(targ)
-    fp = open("history.txt", "r")
-    history = fp.readlines()
-    fp.close()
-    w_history = open("history.txt", "w+")
-    w_history.writelines(history)
 
-    print("Current histfile:")
-    lc = 0
-    for ip in history:
-        # If ip is too short add an extra tab
-        if (len(ip) <= 8):
-            ext = "\t"
-        else:
-            ext = ""
+def opsec_check(s: requests.Session) -> None:
+    pre = s.get("http://icanhazip.com")
+    print(f"[+] Current External IP: {pre.content.decode()}", end="")
+    user_choice = input("Continue [Y/n]: ").lower()
+    if user_choice.strip() == "n" or user_choice.strip() == "no":
+        print("Ok, exiting...")
+        sys.exit(5)
+    
+def get_targets() -> list:
+    with open ("results.txt", "r") as fp:
+        return [line.strip() for line in fp.readlines()]
 
-        if (lc == 3):
-            print(f"{ip.strip()}\t{ext}\n", end="")
-            lc = 0
-        else:
-            print(f"{ip.strip()}\t{ext}\n", end="")
-            lc += 1
+
+def do_ssh_scan(s: requests.Session, targets: list, port: str) -> None:
     for target in targets:
         try:
-            if (target.strip() + "\n" not in history):
-                r = s.get(f"http://{target.strip()}:{port}/.ssh/", timeout=10)
-                print(Fore.RESET + f"http://{target.strip()}:{port}/.ssh/ --> Status Code: {r.status_code}")
-                w_history.write(target.strip() + "\n")
-                # will return bool True | False depending if key word was found
-                key, find = ssh_words(r.content, target.strip())
-                if ((key and reap) or (targ and reap)):
-                    print(f"{target.strip()} contains:")
-                    #            print(r.content.decode().split("\n"))
-                    for line in r.content.decode().split("\n"):
-                        if ("<a href=\"" in line):
-                            file = line.split("href=\"")[1].split("\"")[0]
-                            print("\t" + file)
+            r = s.get(f"http://{target}:{port}/.ssh/", timeout=10)
+            print(Fore.RESET + f"http://{target}:{port}/.ssh/ --> Status Code: {r.status_code}")
+            search_keyword(r.content, target)
         except (ConnectionError, Timeout, RequestException):
             print(Fore.RED + f"{target.strip()}, is not responsive")
-    w_history.close()
+
+def search_keyword(content, target: str) -> None:
+    match, find = ssh_words(content, target)
+    if match:
+        print(f"{target} contains:")
+        for line in content.decode().split("\n"):
+            if ("<a href=\"" in line):
+                file = line.split("href=\"")[1].split("\"")[0]
+                print("\t" + file)
 
 
 if __name__ == "__main__":
-    # print the banner
     banner()
-    notor = False
     parser = argparse.ArgumentParser(
         prog='Data Scraper',
         description='Querys shodan for indexable http servers',
         epilog='Made by Aznable and ice-wzl')
-    parser.add_argument('-q', '--query', action='store_true', help="Conduct shodan query and update result.txt")
-    parser.add_argument('-s', '--scan', action='store_true',
-                        help="Conduct scans and enumeration of targets in result.txt")
-    parser.add_argument('-n', '--notor', action='store_true', help="Dont use tor")
-    parser.add_argument('-p', '--port', help="Specify port number (Default 8000)")
-    parser.add_argument('-t', '--target', help="Specify a target to Scan/Reap")
+
+    parser.add_argument('-q', '--query', action='store_true', help="Conduct shodan query and update result.txt", dest="query")
+    parser.add_argument('-t', '--tor', help="Use socks proxy <ip>:<port> format", required=False, default=False, dest="tor")
+    parser.add_argument('-p', '--port', help="Specify port number (Default 8000)", required=True, default="8000", dest="port")
+    parser.add_argument('-s', '--scan', action='store_true', help="Conduct scans and enumeration of targets in result.txt", dest="scan")
     args = parser.parse_args()
 
-    # conduct the shodan query to get the results
-    if len(sys.argv) == 2:
-        parser.print_help()
+    if not args.scan and not args.query:
+        print("[-] Nothing to do, -s (scan) or -q (query) required")
         sys.exit(1)
 
-    if (args.query):
-        if (args.port):
-           do_query(setup_api(), f'Title:"Directory listing for /" port:{args.port}')
+    # query the shodan api and write all returned hosts to results.txt
+    if args.query:
+        do_query(setup_api(), f'Title:"Directory listing for /" port:{args.port}')
+
+    if args.scan:
+        if args.tor:
+            s = session_tor_setup(args.tor)
         else:
-            do_query(setup_api(), 'Title:"Directory listing for /" port:8000')
-        sleep(1.0)
-    # perform the requests which will loop through the results in results.txt
-    if (args.target):
-        if (args.port):
-            do_request(args.reap, args.notor, True, args.port, args.target)
-        else:
-            do_request(args.reap, args.notor, True, "8000", args.target)
-    if (args.scan):
-        if (args.port):
-            do_request(True, args.notor, args.port, False)
-        else:
-            do_request(True, args.notor, "8000", False)
+            s = requests.Session()
+
+        opsec_check(s)
+
+        targets = get_targets()
+        if len(targets) == 0:
+            print("Error: No results returned, perform a new query with -q")
+            sys.exit(2)
+        do_ssh_scan(s, targets, args.port)

@@ -47,10 +47,10 @@ def do_query(api, query):
         query = "".join(query)
         print("Query {}".format(query))
         result = api.search(query)
-        with open("result.txt", "w+") as fp:
+        with open("results.txt", "w+") as fp:
             for service in result["matches"]:
                 fp.write(service["ip_str"] + "\n")
         fp.close()
     except shodan.exception.APIError as e:
-        print("Invalid Shodan API Key...")
+        print(f"Invalid Shodan API Key: {e}")
         sys.exit(2)

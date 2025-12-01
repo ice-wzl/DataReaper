@@ -100,7 +100,9 @@ def key_words(content, ip_addr):
         "crt.key",
         "cert.crt",
         ".git-credentials",
-        "password"
+        "password",
+        ".pfx"
+        ".p12"
     ]
 
     word_found = False
