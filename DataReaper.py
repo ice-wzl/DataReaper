@@ -1,242 +1,353 @@
 #!/usr/bin/python3
-
-import requests
-import os
+# Title:"Directory listing for /" port:{args.port}
 import argparse
-from simple_term_menu import TerminalMenu
-from time import sleep
+import shodan
+import sys
+import requests
+import ipaddress
+import sqlite3
+import os
+from colorama import Fore
+from bs4 import BeautifulSoup
 from requests.exceptions import ConnectionError, Timeout, RequestException
 from urllib3.exceptions import ConnectionError
-from datetime import datetime
-
-from src.do_setup import *
-from src.do_keywords import *
-
-now = datetime.now()
-date_time = now.strftime("-%m-%d-%Y-%H:%M:%S")
-
-TARGET_IPS = []
 
 
-def do_request(reap, notor, ig_hist, port, targ):
-    # Setup session
-    s = requests.Session()
-    pre = requests.get("http://icanhazip.com")
-    print(f"Current External IP: {pre.content.decode()}", end="")
-    if (notor == False):
-        s.proxies.update({'http': 'socks5://127.0.0.1:9050'})
-        post = s.get("http://icanhazip.com")
-        print(f"TOR External IP: {post.content.decode()}", end="")
-        if (post.content == pre.content):
-            print("\nERR: With and without tor are same.")
-            print("If you are not running tor specify -t")
-            exit()
+merged_list = [
+        ".aws",
+        ".bash_history",
+        ".git",
+        ".git-credentials",
+        ".msf4",
+        ".msf6",
+        ".p12",
+        ".pem",
+        ".pfx",
+        ".python_history",
+        ".ssh",
+        ".txt",
+        ".viminfo",
+        ".wg-easy",
+        ".wget-hsts",
+        "/etc",
+        "/opt",
+        "0day",
+        "brute",
+        "brute_ratel",
+        "bruteforce",
+        "cert.crt",
+        "cobalt",
+        "cobalt-strike",
+        "cobalt_strike",
+        "collect",
+        "crt.key",
+        "crt.pem",
+        "crypter",
+        "Desktop",
+        "Documents",
+        "Downloads",
+        "dropper_cs.exe",
+        "exploit",
+        "gorailgun",
+        "gost",
+        "hack",
+        "hacking",
+        "havoc",
+        "home",
+        "id_dsa",
+        "id_ecdsa",
+        "id_ed25519",
+        "id_rsa",
+        "key.key",
+        "key.pem",
+        "lockbit",
+        "log4j",
+        "malware",
+        "metasploit",
+        "mrlapis",
+        "nessus",
+        "ngrok",
+        "nmap",
+        "notes",
+        "nuclei",
+        "passwd",
+        "password",
+        "payload",
+        "pp_id_rsa.ppk",
+        "priv_key",
+        "qakbot",
+        "qbot",
+        "ransom",
+        "ransomware",
+        "ratel",
+        "redlinestealer",
+        "revil",
+        "root",
+        "shadow",
+        "shellcode",
+        "sliver",
+        "sqlmap",
+        "ssh_rsa.pem",
+        "tools",
+        "victim",
+        "wg",
+        "wireguard",
+        "wormhole"
+    ]
 
-    if (targ == False):
-        fp = open("result.txt", "r")
-        targets = fp.readlines()
-        fp.close()
-    else:
-        targets = []
-        targets.append(targ)
-    fp = open("history.txt", "r")
-    history = fp.readlines()
-    fp.close()
-    w_history = open("history.txt", "w+")
-    w_history.writelines(history)
+def banner():
+    print(
+        Fore.RED +
+        r"""
+               ...                            
+             ;::::;                           
+           ;::::; :;                          
+         ;:::::'   :;                         
+        ;:::::;     ;.                        
+       ,:::::'       ;           OOO\      
+       ::::::;       ;          OOOOO\        
+       ;:::::;       ;         OOOOOOOO       
+      ,;::::::;     ;'         / OOOOOOO      
+    ;:::::::::`. ,,,;.        /  / DOOOOOO    
+  .';:::::::::::::::::;,     /  /     DOOOO   
+ ,::::::;::::::;;;;::::;,   /  /        DOOO  
+;`::::::`'::::::;;;::::: ,#/  /          DOOO 
+:`:::::::`;::::::;;::: ;::#  /            DOOO
+::`:::::::`;:::::::: ;::::# /              DOO
+`:`:::::::`;:::::: ;::::::#/               DOO
+ :::`:::::::`;; ;:::::::::##                OO
+ ::::`:::::::`;::::::::;:::#                OO
+ `:::::`::::::::::::;'`:;::#                O 
+  `:::::`::::::::;' /  / `:#                  
+   ::::::`:::::;'  /  /   `#              v.3.0.0
+                                  Made by Aznable,
+                                          ice-wzl
+    """ + Fore.RESET
+    )
 
-    print("Current histfile:")
-    lc = 0
-    for ip in history:
-        # If ip is too short add an extra tab
-        if (len(ip) <= 8):
-            ext = "\t"
+
+def opsec_check(session: requests.Session):
+    pre = session.get("http://icanhazip.com", timeout=10)
+    print(f"[+] Current External IP: {pre.text}", end="")
+    user_choice = input("Continue [Y/n]: ").lower().strip()
+    if user_choice in ("n", "no"):
+        print("Ok, exiting...")
+        sys.exit(5)
+
+
+class Scan:
+    def __init__(self, query, proxy, port, verbose):
+        self.query   = query
+        self.proxy   = proxy
+        self.port    = port
+        self.verbose = verbose
+
+        if self.proxy is not None:
+            self.session, err = self.session_tor_setup(self.proxy)
+            if not self.session:
+                print(f"Error: {err}")
+                sys.exit(1)
         else:
-            ext = ""
+            self.session = requests.Session()
 
-        if (lc == 3):
-            print(f"{ip.strip()}\t{ext}\n", end="")
-            lc = 0
-        else:
-            print(f"{ip.strip()}\t{ext}\n", end="")
-            lc += 1
-    for target in targets:
+        if self.query is not None:
+            api, err = self.setup_api()
+            if api is None:
+                print(f"Error: {err}")
+                return
+            results = self.do_query(api)
+            if results is not None:
+                self.write_query_results(results)
+
+
+    def session_tor_setup(self, socks_proxy_host_port):
+        if ":" not in socks_proxy_host_port:
+            return None, "socks proxy should be in host:port format"
+
+        host, port = socks_proxy_host_port.split(":", 1)
+
+        if not self.validate_port(port):
+            return None, "invalid port provided"
+        if not self.validate_ip(host):
+            return None, "invalid ip provided"
+
+        s = requests.Session()
+        s.proxies.update({
+            "http":  f"socks5h://{socks_proxy_host_port}",
+            "https": f"socks5h://{socks_proxy_host_port}",
+        })
+        return s, ""
+
+
+    def setup_api(self):
         try:
-            if (target.strip() + "\n" not in history or ig_hist):
-                r = s.get(f"http://{target.strip()}:{port}/", timeout=10)
-                print(Fore.RESET + f"http://{target.strip()}:{port}/ --> Status Code: {r.status_code}")
-                w_history.write(target.strip() + "\n")
-                # will return bool True | False depending if key word was found
-                key, find = key_words(r.content, target.strip())
-                if ((key and reap) or (targ and reap)):
-                    TARGET_IPS.append(target.strip() + " " + find)
-                    print(f"{target.strip()} contains:")
-                    #            print(r.content.decode().split("\n"))
-                    for line in r.content.decode().split("\n"):
-                        if ("<a href=\"" in line):
-                            file = line.split("href=\"")[1].split("\"")[0]
-                            print("\t" + file)
+            with open("api.txt", "r") as fp:
+                api_key = fp.read().strip()
+                if self.verbose:
+                    print(f"API key used: {api_key}")
+            return shodan.Shodan(api_key), ""
+        except FileNotFoundError:
+            return None, "api.txt not found"
+
+
+    def do_query(self, api):
+        try:
+            if self.verbose:
+                print(f"Query: {self.query}")
+            return api.search(self.query)
+        except shodan.exception.APIError as e:
+            print(f"Shodan API error: {e}")
+            return None
+
+
+    def write_query_results(self, results):
+        conn = sqlite3.connect("db/databse.db")
+        cursor = conn.cursor()
+
+        for service in results["matches"]:
+            try:
+                cursor.execute(
+                    "INSERT INTO ToScan (ip_addr, port) VALUES (?, ?)",
+                    (service["ip_str"], self.port)
+                )
+                conn.commit()
+            except sqlite3.IntegrityError:
+                pass
+
+        conn.close()
+
+
+    def validate_ip(self, ip_string):
+        try:
+            ipaddress.ip_address(ip_string)
+            return True
+        except ValueError:
+            return False
+
+
+    def validate_port(self, port):
+        try:
+            port = int(port)
+            return 0 < port <= 65535
+        except ValueError:
+            return False
+
+
+class Target(Scan):
+    def __init__(self, host, port, query=None, proxy=None, verbose=False):
+        super().__init__(query=query, proxy=proxy, port=port, verbose=verbose)
+        self.host = host
+        self.port = port
+        self.verbose = verbose
+        self.visited = set()
+        self.targets = set()
+        self.reports_dir = os.path.join(os.getcwd(), "reports")
+        self.blacklist = ["venv/", ".cache/", ".npm/", "site-packages/"]
+
+        if not os.path.exists(self.reports_dir):
+            os.mkdir("reports")
+
+
+    def do_scan(self):
+        # we enforce unique entries in schema, provide second validation
+        if self.host not in self.targets:
+            try:
+                url = f"http://{self.host}:{self.port}/"
+                r = self.session.get(url, timeout=10)
+                print(f"{url} --> Status Code: {r.status_code}")
+                self.parse_html(r.content, base_path="")
+            except (ConnectionError, Timeout, RequestException):
+                print(Fore.RED + f"{self.host} not responsive" + Fore.RESET)
+        self.targets.add(self.host)
+
+    def do_scan_directory(self, target_uri):
+        visit_key = target_uri.strip("/")
+
+        if visit_key in self.visited:
+            return
+        self.visited.add(visit_key)
+
+        try:
+            url = f"http://{self.host}:{self.port}/{target_uri}"
+            r = self.session.get(url, timeout=10)
+            print(f"{url} --> Status Code: {r.status_code}")
+            self.parse_html(r.content, base_path=target_uri)
         except (ConnectionError, Timeout, RequestException):
-            print(Fore.RED + f"{target.strip()}, is not responsive")
-    w_history.close()
-    reap_menu(s, port)
+            print(Fore.RED + f"{self.host}/{target_uri} not responsive" + Fore.RESET)
 
 
-def reap_menu(s, port):
-    TARGET_IPS.append(" - END HARVEST")
-    while True:
-        os.system("clear")
-        print("Which soul would you like to reap?")
-        menu = TerminalMenu(TARGET_IPS)
-        selection = menu.show()
-        if selection == len(TARGET_IPS) - 1:
-            break
-        target = TARGET_IPS[selection].split(' ')[0]
-        os.system("clear")
+    def parse_html(self, content, base_path):
+        soup = BeautifulSoup(content.decode("utf-8", errors="ignore"), "html.parser")
 
-        try:
-            r = s.get(f"http://{target.strip()}:{port}/", timeout=10)
-
-            print(f"{target.strip()} contains:")
-            print(Fore.RESET + f"http://{target.strip()}:{port}/ --> Status Code: {r.status_code}")
-            # print(r.content.decode().split("\n"))
-            for line in r.content.decode().split("\n"):
-                if ("<a href=\"" in line):
-                    file = line.split("href=\"")[1].split("\"")[0]
-                    print("\t" + file)
-            while True:
-                user_in = input("(R)eap/(A)sk/(Q)back > ")
-                user_in = user_in.lower()
-                if (user_in not in ['r', 'a', 'q']):
-                    print("--- Invalid Input ---")
-                else:
-                    break
-
-            if user_in == 'r':
-                harvest(s, target, r.content.decode(), "/", True, port)
-            elif user_in == 'a':
-                harvest(s, target, r.content.decode(), "/", False, port)
-            elif user_in == 'q':
+        for li in soup.find_all("li"):
+            a = li.find("a")
+            if not a:
                 continue
 
+            href = a.get("href")
+            if not href or href in ("../", "./"):
+                continue
 
-        except (ConnectionError, Timeout, RequestException):
-            print(Fore.RED + f"{target}, is not responsive")
+            full_path = f"{base_path}{href}"
+            print(full_path)
+            self.append_report_log(full_path)
 
-    # Harvest with questions
-    # harvest(s,target.strip(),r.content.decode(),"/",False,port)
-    # Harvest without asking questions except file size warnings
-    # harvest(s,target.strip(),r.content.decode(),"/",True,port)
+            if href.endswith("/") and href not in self.blacklist:
+                self.do_scan_directory(full_path)
+
+    def append_report_log(self, data: str):
+        with open(os.path.join(self.reports_dir, f"{self.host}.log"), "a") as fp:
+            fp.write(data+"\n")
 
 
-def harvest(s, ip, content, working_file, X, port):
-    if (X == False and working_file != "/"):
-        print(f"\nDir: {working_file} contains:")
-        for line in content.split("\n"):
-            if ("<a href=\"" in line):
-                file = line.split("href=\"")[1].split("\"")[0]
-                print("\t" + file)
+def get_targets(proxy, verbose):
+    conn = sqlite3.connect("db/databse.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT ip_addr, port FROM ToScan")
 
-        harvest_dir = input(Fore.RESET + "\nWould you like to reap (Y/n/cancel)> ")
-        if (harvest_dir.upper() != "Y"):
-            return
-        if (harvest_dir.upper() == "CANCEL"):
-            working_file = "/" + working_file.split("/")[1]
+    for host, port in cursor.fetchall():
+        target = Target(host, port, proxy=proxy, verbose=verbose)
+        target.do_scan()
 
-    if not os.path.exists(ip + working_file):
-        os.makedirs(ip + working_file)
-    for line in content.split("\n"):
-        if ("<a href=\"" in line):
-            file = line.split("href=\"")[1].split("\"")[0]
-            if ("/" in file):
-                print("Crawling: " + working_file + file)
-                rep = s.get(f"http://{ip}:{port}{working_file}{file}")
-                harvest(s, ip, rep.content.decode(), working_file + file, X, port)
-                if not os.path.exists(ip + working_file + file):
-                    os.makedirs(ip + working_file + file)
-            else:
-                lf = False
-                hd = s.head(f"http://{ip}:{port}{working_file}{file}")
-                hdr = hd.headers
-                if (int(hdr['Content-Length']) > 5000000):
-                    lf = True
-                    print(Fore.RED + f"Warning: {file} is large ({hdr['Content-Length']} Bytes)")
-                    dl = input(Fore.RESET + "Proceed with download? (Y/n)> ")
-                if (lf and dl.upper() == "N"):
-                    print(f"Aborting download on {file}")
-                else:
-                    print(f"Getting: {file} Size: {hdr['Content-Length']}")
-                    rep = s.get(f"http://{ip}:{port}{working_file}{file}", stream=True, timeout=30)
-                    w_file = open(f"{ip}{working_file}{file}", 'wb')
-                    w_file.write(rep.content)
-                    w_file.close()
+    conn.close()
+
+
+def main(args):
+    banner()
+
+    session = requests.Session()
+    if args.tor:
+        session.proxies.update({
+            "http":  f"socks5h://{args.tor}",
+            "https": f"socks5h://{args.tor}",
+        })
+    opsec_check(session)
+
+    if args.query:
+        Scan(
+            query=f'Title:"Directory listing for /" port:{args.port}',
+            proxy=args.tor,
+            port=args.port,
+            verbose=args.verbose
+        )
+
+    if args.scan:
+        get_targets(args.tor, args.verbose)
 
 
 if __name__ == "__main__":
-    # print the banner
-    banner()
-    notor = False
     parser = argparse.ArgumentParser(
-        prog='Data Scraper',
-        description='Querys shodan for indexable http servers',
-        epilog='Made by Aznable and ice-wzl')
-    parser.add_argument('-q', '--query', action='store_true', help="Conduct shodan query and update result.txt")
-    parser.add_argument('-s', '--scan', action='store_true',
-                        help="Conduct scans and enumeration of targets in result.txt")
-    parser.add_argument('-r', '--reap', action='store_true', help="If positive enumeration reap all files from target")
-    parser.add_argument('-x', '--full', action='store_true', help="Full send it all")
-    parser.add_argument('-n', '--notor', action='store_true', help="Dont use tor")
-    parser.add_argument('-i', '--ig_hist', action='store_true', help="Ignore history file")
-    parser.add_argument('-p', '--port', help="Specify port number (Default 8000)")
-    parser.add_argument('-t', '--target', help="Specify a target to Scan/Reap")
+        prog="Data Scraper",
+        description="Query Shodan for indexable HTTP servers and enumerate exposed files"
+    )
 
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-K', '--key', action='store_true', help='conduct query for exposed .pem files')
-    group.add_argument('-P', '--python', action='store_true', help='conduct query for exposed python http.servers')
+    action_group = parser.add_mutually_exclusive_group(required=True)
+    action_group.add_argument("-q", "--query", action="store_true")
+    action_group.add_argument("-s", "--scan", action="store_true")
+
+    parser.add_argument("-t", "--tor", help="SOCKS proxy ip:port", default=None)
+    parser.add_argument("-p", "--port", help="Target port", required=True)
+    parser.add_argument("-v", "--verbose", action="store_true")
 
     args = parser.parse_args()
-
-    # conduct the shodan query to get the results
-    if len(sys.argv) == 2:
-        parser.print_help()
-        sys.exit(1)
-    reap = (args.reap or args.full)
-    if (args.key):
-        if (args.query or args.full):
-            if (args.port):
-                do_query(setup_api(), f'http.title:"Index of /" http.html:"key.pem", port:{args.port}')
-            else:
-                do_query(setup_api(), 'http.title:"Index of /" http.html:"key.pem", port:80')
-        sleep(1.0)
-
-        if (args.target):
-            if (args.port):
-                do_request(args.reap, args.notor, True, args.port, args.target)
-            else:
-                do_request(args.reap, args.notor, True, "80", args.target)
-
-        if (args.scan or args.full):
-            if (args.port):
-                do_request(args.reap, args.notor, args.ig_hist, args.port, False)
-            else:
-                do_request(args.reap, args.notor, args.ig_hist, "80", False)
-
-    elif (args.python):
-        if (args.query or args.full):
-            if (args.port):
-                do_query(setup_api(), f'Title:"Directory listing for /" port:{args.port}')
-            else:
-                do_query(setup_api(), 'Title:"Directory listing for /" port:8000')
-            sleep(1.0)
-        # perform the requests which will loop through the results in results.txt
-        if (args.target):
-            if (args.port):
-                do_request(args.reap, args.notor, True, args.port, args.target)
-            else:
-                do_request(args.reap, args.notor, True, "8000", args.target)
-
-        if (args.scan or args.full):
-            if (args.port):
-                do_request(args.reap, args.notor, args.ig_hist, args.port, False)
-            else:
-                do_request(args.reap, args.notor, args.ig_hist, "8000", False)
+    main(args)
