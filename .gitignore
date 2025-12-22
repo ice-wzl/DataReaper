@@ -1,3 +1,4 @@
+db/database.db
 .idea/
 __pycache__
 venv/*
