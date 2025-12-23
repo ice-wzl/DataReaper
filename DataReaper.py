@@ -4,15 +4,30 @@ import argparse
 import shodan
 import sys
 import requests
+import base64
 import ipaddress
 import sqlite3
 import os
+from concurrent.futures import ThreadPoolExecutor
 from colorama import Fore
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 from requests.exceptions import ConnectionError, Timeout, RequestException
 from urllib3.exceptions import ConnectionError
+from datetime import datetime
 
+# TODO: remove non responsive hosts from the ToScan table
+# create an automated way to download
 
+full_word_match = [
+    "cobalt",
+    "collect",
+    "brute",
+    "home",
+    "root",
+    "shadow",
+    "wg",
+]
 merged_list = [
         ".aws",
         ".bash_history",
@@ -25,21 +40,16 @@ merged_list = [
         ".pfx",
         ".python_history",
         ".ssh",
-        ".txt",
         ".viminfo",
         ".wg-easy",
         ".wget-hsts",
-        "/etc",
-        "/opt",
         "0day",
-        "brute",
+        "backup",
         "brute_ratel",
         "bruteforce",
         "cert.crt",
-        "cobalt",
         "cobalt-strike",
         "cobalt_strike",
-        "collect",
         "crt.key",
         "crt.pem",
         "crypter",
@@ -53,7 +63,6 @@ merged_list = [
         "hack",
         "hacking",
         "havoc",
-        "home",
         "id_dsa",
         "id_ecdsa",
         "id_ed25519",
@@ -82,15 +91,12 @@ merged_list = [
         "ratel",
         "redlinestealer",
         "revil",
-        "root",
-        "shadow",
         "shellcode",
         "sliver",
         "sqlmap",
         "ssh_rsa.pem",
         "tools",
         "victim",
-        "wg",
         "wireguard",
         "wormhole"
     ]
@@ -201,7 +207,7 @@ class Scan:
 
 
     def write_query_results(self, results):
-        conn = sqlite3.connect("db/databse.db")
+        conn = sqlite3.connect("db/database.db")
         cursor = conn.cursor()
 
         for service in results["matches"]:
@@ -211,7 +217,8 @@ class Scan:
                     (service["ip_str"], self.port)
                 )
                 conn.commit()
-            except sqlite3.IntegrityError:
+            except sqlite3.IntegrityError as e:
+                # unique contraint will fail, expected
                 pass
 
         conn.close()
@@ -241,11 +248,9 @@ class Target(Scan):
         self.verbose = verbose
         self.visited = set()
         self.targets = set()
-        self.reports_dir = os.path.join(os.getcwd(), "reports")
-        self.blacklist = ["venv/", ".cache/", ".npm/", "site-packages/"]
-
-        if not os.path.exists(self.reports_dir):
-            os.mkdir("reports")
+        self.results = ""
+        self.max_dirs_to_visit = 150
+        self.blacklist = ["venv/", ".cache/", ".npm/", "site-packages/", ".cargo/", ".rustup/", ".nvm/"]
 
 
     def do_scan(self):
@@ -256,11 +261,17 @@ class Target(Scan):
                 r = self.session.get(url, timeout=10)
                 print(f"{url} --> Status Code: {r.status_code}")
                 self.parse_html(r.content, base_path="")
+                self.write_directories_to_db(self.results)
+                self.delete_scan_request()
             except (ConnectionError, Timeout, RequestException):
                 print(Fore.RED + f"{self.host} not responsive" + Fore.RESET)
         self.targets.add(self.host)
 
     def do_scan_directory(self, target_uri):
+         # 100 directories gives us a good idea of dir contents, recusion protection
+        if len(self.visited) > self.max_dirs_to_visit:
+            return
+
         visit_key = target_uri.strip("/")
 
         if visit_key in self.visited:
@@ -288,28 +299,78 @@ class Target(Scan):
             if not href or href in ("../", "./"):
                 continue
 
-            full_path = f"{base_path}{href}"
+            full_path = urljoin(f"/{base_path}", href).lstrip("/")
             print(full_path)
-            self.append_report_log(full_path)
+            self.results += full_path + "\n"
+
+            self.keyword_search(full_path)
+            self.keyword_search_full_words(full_path)
 
             if href.endswith("/") and href not in self.blacklist:
                 self.do_scan_directory(full_path)
 
-    def append_report_log(self, data: str):
-        with open(os.path.join(self.reports_dir, f"{self.host}.log"), "a") as fp:
-            fp.write(data+"\n")
+
+    def write_directories_to_db(self, data: str):
+        try:
+            conn = sqlite3.connect("db/database.db")
+            cursor = conn.cursor()
+            results = base64.b64encode(self.results.encode("utf-8"))
+            dt = datetime.now()
+            sql_datetime = dt.strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("INSERT INTO Targets (ip_addr, port, scan_date, results) VALUES (?, ?, ?, ?)",
+            (self.host, self.port, sql_datetime, results))
+            conn.commit()
+        except sqlite3.IntegrityError as e:
+                print(e)
+                pass
+        conn.close()  
+
+    def delete_scan_request(self):
+        try:
+            conn = sqlite3.connect("db/database.db")
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM ToScan WHERE ip_addr = ?", (self.host,))
+            conn.commit()
+        except sqlite3.IntegrityError as e:
+            print(e)
+            pass
+        conn.close()  
+
+    def keyword_search_full_words(self, path: str):
+        path_parts = path.split("/")
+        if len(path_parts) == 0:
+            return 
+        for keyword in full_word_match:
+            if keyword.lower() in path_parts:
+                with open("output.log", "a") as fp:
+                    fp.write(f"{self.host}:{self.port}\n")
+                    fp.write(f"DETECTED: {keyword}\n")
+                    fp.write(f"{path}\n\n")
+                return
+
+
+    def keyword_search(self, path: str):
+        for keyword in merged_list:
+            if keyword.lower() in path.lower():
+                with open("output.log", "a") as fp:
+                    fp.write(f"{self.host}:{self.port}\n")
+                    fp.write(f"DETECTED: {keyword}\n")
+                    fp.write(f"{path}\n\n")
+                return
 
 
 def get_targets(proxy, verbose):
-    conn = sqlite3.connect("db/databse.db")
+    conn = sqlite3.connect("db/database.db")
     cursor = conn.cursor()
     cursor.execute("SELECT ip_addr, port FROM ToScan")
 
-    for host, port in cursor.fetchall():
-        target = Target(host, port, proxy=proxy, verbose=verbose)
-        target.do_scan()
-
+    targets = cursor.fetchall()
     conn.close()
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        for host, port in targets:
+            target = Target(host, port, proxy=proxy, verbose=verbose)
+            executor.submit(target.do_scan)  
 
 
 def main(args):

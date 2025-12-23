@@ -2,8 +2,8 @@ CREATE TABLE Targets(
     id INT PRIMARY KEY,
     ip_addr VARCHAR(15) UNIQUE NOT NULL,
     port INT NOT NULL,
-    results TEXT,
-    responsive BOOL
+    scan_date DATETIME NOT NULL,
+    results TEXT
 );
 
 CREATE TABLE ToScan(
