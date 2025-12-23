@@ -4,85 +4,191 @@
   <img src="https://github.com/ice-wzl/DataReaper/assets/75596877/c537207c-1d48-4766-b7e3-91a1f896ec04"/>
 </p>
 
-# DataReaper (DARE): Documentation
+DataReaper is a Python-based reconnaissance tool designed to discover and enumerate publicly accessible HTTP servers with directory listings exposed. It leverages the Shodan API to identify targets and performs automated directory traversal to catalog exposed files and directories.
 
-DataReaper is a powerful Python tool designed to harvest data from publicly accessible HTTP servers. It combines the capabilities of Shodan search with web scraping techniques to efficiently gather information from targeted websites.
+## Features
 
-## Key Features:
+- **Shodan Integration**: Query Shodan for HTTP servers with open directory listings and store results in a local SQLite database
+- **Automated Enumeration**: Recursively scan and catalog exposed directories and files
+- **Proxy Support**: Route traffic through a SOCKS proxy (such as Tor) for anonymized scanning
+- **Sensitive File Detection**: Built-in detection for security-relevant files including SSH keys, credentials, configuration files, and more
+- **Report Generation**: Generates per-target log files documenting all discovered paths
 
-- Shodan Integration: Queries Shodan based on specific criteria and stores results in a text file.
-- Web Scraping: Extracts valuable content and links from target websites.
-- Reaping: Optionally gathers subdirectories and files for deeper analysis.
-- Tor Support: Anonymize your scans and protect your identity by using Tor.
-- History Tracking: Maintains a history file to avoid redundant scans and save time.
+## Requirements
 
-## Installation:
+- Python 3.6 or higher
+- A paid Shodan API membership (required for API access)
+- Optional: Tor (for anonymous scanning)
 
-- Python 3.6+: Ensure Python 3.6 or later is installed.
+## Installation
 
-- Virtual Environment: Create a virtual environment to manage program dependencies separately from your system packages.
-````
+### Step 1: Clone the Repository
+
+```
+git clone https://github.com/ice-wzl/DataReaper.git
+cd DataReaper
+```
+
+### Step 2: Create a Virtual Environment
+
+It is recommended to use a virtual environment to isolate dependencies.
+
+**Linux/macOS:**
+```
 python3 -m venv venv
 source venv/bin/activate
-````
-### Dependencies: Install required packages from requirements.txt.
-````
-pip3 install -r requirements.txt
-````
-- Non-Free Shodan Membership:
-    - A paid Shodan membership is required to access the API and use this program's full functionality.
-    - Create a Shodan account and upgrade to a paid plan if needed.
-    - Obtain your API key from your account dashboard.
-    - Create a file named api.txt in the same directory as the program.
-    - Enter your API key as the only line in the file.
+```
 
-## Usage:
-- Utilizing Tor for making requests is the default, if you plan on using the default option of Tor, ensure it is started on your system. Install Tor if it is not already present on your system.
-````
+**Windows:**
+```
+python -m venv venv
+venv\Scripts\activate
+```
+
+### Step 3: Install Dependencies
+
+```
+pip install -r requirements.txt
+```
+
+### Step 4: Configure Your Shodan API Key
+
+1. Log in to your Shodan account at https://shodan.io
+2. Navigate to your account page to obtain your API key
+3. Create a file named `api.txt` in the DataReaper directory
+4. Paste your API key as the only content in the file
+
+```
+echo "YOUR_API_KEY_HERE" > api.txt
+```
+
+### Step 5: Initialize the Database
+
+The database schema is located in `db/schema.sql`. If the database does not already exist or you need to reinitialize it:
+
+```
+sqlite3 db/database.db < db/schema.sql
+```
+
+On Windows (using SQLite command line):
+```
+sqlite3 db/database.db ".read db/schema.sql"
+```
+
+## Usage
+
+DataReaper operates in two primary modes: **query mode** and **scan mode**.
+
+### Command Syntax
+
+```
+python DataReaper.py [-h] (-q | -s) [-t TOR] -p PORT [-v]
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `-q`, `--query` | Query Shodan for targets with directory listings on the specified port |
+| `-s`, `--scan` | Scan all targets stored in the database |
+| `-p PORT`, `--port PORT` | Target port number (required) |
+| `-t IP:PORT`, `--tor IP:PORT` | SOCKS proxy address for anonymized requests (e.g., `127.0.0.1:9050` for Tor) |
+| `-v`, `--verbose` | Enable verbose output |
+
+Note: The `-q` and `-s` options are mutually exclusive. You must choose one per execution.
+
+### Workflow
+
+**1. Query Shodan for Targets**
+
+First, query Shodan to populate your database with potential targets:
+
+```
+python DataReaper.py -q -p 8080
+```
+
+This searches Shodan for servers on port 8080 with exposed directory listings and stores the results in the SQLite database.
+
+**2. Scan the Discovered Targets**
+
+After populating the database, scan the targets to enumerate their exposed files:
+
+```
+python DataReaper.py -s -p 8080
+```
+
+### Using Tor for Anonymity
+
+To route your traffic through Tor, first ensure Tor is running on your system.
+
+**Linux:**
+```
 sudo apt install tor
 sudo systemctl start tor
-````
+```
 
-- Run the program:
-````
-python3 DataReaper.py
-````
-- Options:\
-        - `-q`: Perform a Shodan query and update the result.txt file.\
-        - `-s`: Scan and enumerate targets listed in the result.txt file.\
-        - `-r`: Reap subdirectories and files from harvested targets (requires -s).\
-        - `-x`: Execute all actions: Perform a Shodan query, scan targets, and reap data (equivalent to -q -s -r).\
-        - `-n`: Disable Tor support: Do not use Tor for anonymized scanning.\
-        - `-i`: Ignore history file: Scan all targets again, regardless of past scans.\
-        - `-p [port number]`: Port number to do query or scan on. Default 8000.\
-        - `-t [target ip]`: Target ip to scan. Assumes scan unless -r specified.
+**Windows:**
 
-- Output:
-    - Shodan query results are stored in the result.txt file.
-    - A history of scanned targets is maintained in the history.txt file.
-    - Harvested files are saved in directories based on the target IP address.
+Download and install the Tor Expert Bundle from https://www.torproject.org/download/tor/
 
-## Examples:
+Then run DataReaper with the `-t` flag pointing to your Tor SOCKS proxy:
 
-- Update results and scan targets:
-````
-python data_reaper.py -q -s
-````
-- Perform a complete data harvest with Tor:
-````
-python data_reaper.py -x
-````
-- Ignore history and scan all targets without Tor:
-````
-python data_reaper.py -s -i -n
-````
-## Disclaimer:
+```
+python DataReaper.py -s -p 8080 -t 127.0.0.1:9050
+```
 
-- DataReaper is designed for educational and research purposes only. Use it responsibly and ethically, considering any relevant legal and ethical implications of data collection activities.
+### Examples
 
-- Further Information:
+Query Shodan for servers on port 80 and store results:
+```
+python DataReaper.py -q -p 80
+```
+
+Scan stored targets on port 8000 through Tor with verbose output:
+```
+python DataReaper.py -s -p 8000 -t 127.0.0.1:9050 -v
+```
+
+Query Shodan for servers on port 443:
+```
+python DataReaper.py -q -p 443
+```
+
+## Output
+
+- **Database**: Target IPs and ports are stored in `db/database.db`
+- **Reports**: Scan results are saved as log files in the `reports/` directory, named by target IP (e.g., `reports/192.168.1.1.log`)
+
+Each report file contains a list of all discovered paths on that target.
+
+## Detected File Types
+
+DataReaper includes built-in detection for security-sensitive files and directories, including:
+
+- SSH keys (`id_rsa`, `id_ed25519`, `id_ecdsa`, etc.)
+- AWS credentials (`.aws`)
+- Git repositories and credentials (`.git`, `.git-credentials`)
+- Certificate files (`.pem`, `.pfx`, `.p12`, `.crt`, `.key`)
+- Shell history files (`.bash_history`, `.python_history`)
+- System directories (`/etc`, `/home`, `/root`)
+- Password files (`passwd`, `shadow`)
+- Common offensive security tools directories
+
+## Disclaimer
+
+DataReaper is intended for authorized security research and educational purposes only. Users are solely responsible for ensuring they have proper authorization before scanning any systems. Unauthorized access to computer systems is illegal. The authors assume no liability for misuse of this tool.
+
+## Resources
 
 - Shodan API Documentation: https://developer.shodan.io/api
-- Python Requests Library: https://readthedocs.org/projects/requests/
+- Python Requests Library: https://docs.python-requests.org/
+- Tor Project: https://www.torproject.org/
 
-### Thank you for using DataReaper!
+## License
+
+See the LICENSE file for details.
+
+## Authors
+
+- Aznable
+- ice-wzl
