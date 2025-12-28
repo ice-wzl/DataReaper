@@ -4,9 +4,7 @@ import argparse
 import sys
 import requests
 import sqlite3
-import os
 from concurrent.futures import ThreadPoolExecutor
-from requests.exceptions import Timeout
 from datetime import datetime
 
 from src.Scan import Scan

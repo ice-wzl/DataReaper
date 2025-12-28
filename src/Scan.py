@@ -1,6 +1,5 @@
 """Class called Scan which handles retrieving of the api key and making a query request to the Shodan api"""
 import ipaddress
-import sys
 import shodan
 import sqlite3
 import requests

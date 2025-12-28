@@ -2,15 +2,15 @@
 into blacklisted directories, along with establishing recursion protection for the scanner. The target class controls
 how the host is interacted with."""
 import base64
-import requests
+import sqlite3
 from colorama import Fore
 from datetime import datetime
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from requests.exceptions import ConnectionError, Timeout, RequestException
-from urllib3.exceptions import ConnectionError
 
 from src.Scan import Scan
+from src.helper import merged_list, full_word_match
 
 
 class Target(Scan):
