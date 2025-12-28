@@ -4,6 +4,7 @@ full_word_match = [
     ".bash_history",
     ".git",
     ".git-credentials",
+    ".sqlite_history",
     "backend.yml",
     "bruteforce",
     "cobalt",
@@ -15,8 +16,12 @@ full_word_match = [
     "home",
     "root",
     "shadow",
+    "socat",
     "ssh-tools",
+    "tailscale",
+    "tcpdump",
     "wg",
+    "xray"
 ]
 merged_list = [
         ".aws",

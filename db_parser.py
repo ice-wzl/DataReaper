@@ -1,6 +1,8 @@
 import base64
 import sqlite3
 
+# TODO: add in keyword searching 
+
 def exec_query(query: str) -> list:
     try:
         conn = sqlite3.connect("db/database.db")
