@@ -11,3 +11,9 @@ CREATE TABLE ToScan(
     ip_addr VARCHAR(15) UNIQUE NOT NULL,
     port INT NOT NULL
 );
+
+CREATE TABLE DownloadTargets(
+    id INT PRIMARY KEY,
+    ip_addr VARCHAR(15),
+    port INT NOT NULL
+);
