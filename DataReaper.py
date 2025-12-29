@@ -9,9 +9,9 @@ from datetime import datetime
 
 from src.Scan import Scan
 from src.Target import Target
+from src.Download import Download
 from src.helper import *
 
-# TODO: remove non responsive hosts from the ToScan table
 # create an automated way to download
 
 def opsec_check(session: requests.Session):
@@ -42,13 +42,14 @@ def get_targets(proxy, verbose):
 def get_download_targets(proxy, verbose):
     conn = sqlite3.connect("db/database.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT ip_addr, port from DownloadTargets")
+    cursor.execute("SELECT ip_addr, port, path from DownloadTargets")
+    
     targets = cursor.fetchall()
     conn.close()
-    # now use the thread pool executor
-    # create new class and perform download actions
-
-
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        for host, port, path in targets:
+            download_requests = Download(host, port, path, proxy=proxy, verbose=verbose)
+            executor.submit(download_requests.do_download)
 
 def main(args):
     banner()
@@ -83,6 +84,7 @@ def main(args):
 
     if args.scan:
         get_targets(args.tor, args.verbose)
+        get_download_targets(args.tor, args.verbose)
 
 
 if __name__ == "__main__":

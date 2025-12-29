@@ -1,5 +1,27 @@
 import base64
 import sqlite3
+import os
+
+def confirm_removal():
+    targets_file = os.path.join(os.getcwd(), "targets_output.log")
+    download_file = os.path.join(os.getcwd(), "download_output.log")
+    if os.path.exists(targets_file):
+        choice = input(f"{targets_file} detected from past run, remove [Y/n]: ")
+        
+        if choice.lower() in ("y", "yes", ""):
+            os.remove(targets_file)
+        elif choice.lower() in ("n", "no"):
+            pass
+        else:
+            confirm_removal()
+    if os.path.exists(download_file):
+        choice = input(f"{download_file} detected from past run, remove [Y/n]: ")
+        if choice.lower() in ("y", "yes", ""):
+            os.remove(download_file)
+        elif choice.lower() in ("n", "no"):
+            pass
+        else:
+            confirm_removal()
 
 def exec_query(query: str) -> list:
     try:
@@ -47,6 +69,8 @@ def write_output(data: str, file_name: str):
 
 
 if __name__ == '__main__':
+    confirm_removal()
+
     targets = get_db_file("SELECT * FROM Targets")
     parse_data_targets(targets)
     

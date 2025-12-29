@@ -119,10 +119,6 @@ class Target(Scan):
             return 
         for keyword in full_word_match:
             if keyword.lower() in path_parts:
-                with open("output.log", "a") as fp:
-                    fp.write(f"{self.host}:{self.port}\n")
-                    fp.write(f"Perfect match DETECTED: {keyword}\n")
-                    fp.write(f"{path}\n\n")
                 try:
                     conn = sqlite3.connect("db/database.db")
                     cursor = conn.cursor()
@@ -140,10 +136,6 @@ class Target(Scan):
     def keyword_search(self, path: str):
         for keyword in merged_list:
             if keyword.lower() in path.lower():
-                with open("output.log", "a") as fp:
-                    fp.write(f"{self.host}:{self.port}\n")
-                    fp.write(f"DETECTED: {keyword}\n")
-                    fp.write(f"{path}\n\n")
                 try:
                     conn = sqlite3.connect("db/database.db")
                     cursor = conn.cursor()
