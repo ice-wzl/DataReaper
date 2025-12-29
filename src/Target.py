@@ -114,7 +114,6 @@ class Target(Scan):
         conn.close()  
 
     def keyword_search_full_words(self, path: str):
-        keyword_found = False
         path_parts = path.split("/")
         if len(path_parts) == 0:
             return 
@@ -124,21 +123,19 @@ class Target(Scan):
                     fp.write(f"{self.host}:{self.port}\n")
                     fp.write(f"Perfect match DETECTED: {keyword}\n")
                     fp.write(f"{path}\n\n")
-                    keyword_found = True
-                    break
-        if keyword_found:
-            try:
-                conn = sqlite3.connect("db/database.db")
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO DownloadTargets (ip_addr, port, keyword, path) VALUES (?, ?, ?, ?)",
-                    (self.host, self.port, path)
-                )
-                conn.commit()
-            except sqlite3.IntegrityError:
-                pass
-            finally:
-                conn.close()
+                try:
+                    conn = sqlite3.connect("db/database.db")
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "INSERT INTO DownloadTargets (ip_addr, port, keyword, path) VALUES (?, ?, ?, ?)",
+                        (self.host, self.port, keyword, path)
+                    )
+                    conn.commit()
+                except sqlite3.IntegrityError:
+                    pass
+                finally:
+                    conn.close()
+                break
         
     def keyword_search(self, path: str):
         for keyword in merged_list:
@@ -147,18 +144,16 @@ class Target(Scan):
                     fp.write(f"{self.host}:{self.port}\n")
                     fp.write(f"DETECTED: {keyword}\n")
                     fp.write(f"{path}\n\n")
-                    keyword_found = True
-                    break
-        if keyword_found:
-            try:
-                conn = sqlite3.connect("db/database.db")
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO DownloadTargets (ip_addr, port, keyword, path) VALUES (?, ?, ?, ?)",
-                    (self.host, self.port, path)
-                )
-                conn.commit()
-            except sqlite3.IntegrityError:
-                pass
-            finally:
-                conn.close()
+                try:
+                    conn = sqlite3.connect("db/database.db")
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "INSERT INTO DownloadTargets (ip_addr, port, keyword, path) VALUES (?, ?, ?, ?)",
+                        (self.host, self.port, keyword, path)
+                    )
+                    conn.commit()
+                except sqlite3.IntegrityError:
+                    pass
+                finally:
+                    conn.close()
+                break
