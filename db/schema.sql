@@ -14,6 +14,8 @@ CREATE TABLE ToScan(
 
 CREATE TABLE DownloadTargets(
     id INT PRIMARY KEY,
-    ip_addr VARCHAR(15),
-    port INT NOT NULL
+    ip_addr VARCHAR(15) NOT NULL,
+    port INT NOT NULL,
+    keyword TEXT NOT NULL,
+    path TEXT NOT NULL
 );

@@ -37,7 +37,17 @@ def get_targets(proxy, verbose):
     with ThreadPoolExecutor(max_workers=4) as executor:
         for host, port in targets:
             target = Target(host, port, proxy=proxy, verbose=verbose)
-            executor.submit(target.do_scan)  
+            executor.submit(target.do_scan) 
+
+def get_download_targets(proxy, verbose):
+    conn = sqlite3.connect("db/database.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT ip_addr, port from DownloadTargets")
+    targets = cursor.fetchall()
+    conn.close()
+    # now use the thread pool executor
+    # create new class and perform download actions
+
 
 
 def main(args):

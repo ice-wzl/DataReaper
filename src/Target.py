@@ -25,7 +25,7 @@ class Target(Scan):
         self.results = ""
         self.max_dirs_to_visit = 150
         self.blacklist = [
-            "venv/", ".cache/", ".npm/", "site-packages/",
+            "dev/", "venv/", ".cache/", ".npm/", "site-packages/",
             ".cargo/", ".rustup/", ".nvm/"
         ]
 
@@ -61,7 +61,7 @@ class Target(Scan):
             print(f"{url} --> Status Code: {r.status_code}")
             self.parse_html(r.content, base_path=target_uri)
         except (ConnectionError, Timeout, RequestException):
-            print(Fore.RED + f"{self.host}/{target_uri} not responsive" + Fore.RESET)
+            print(Fore.RED + f"{self.host}:{self.port}/{target_uri} not responsive" + Fore.RESET)
 
 
     def parse_html(self, content, base_path):
@@ -131,8 +131,8 @@ class Target(Scan):
                 conn = sqlite3.connect("db/database.db")
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO DownloadTargets (ip_addr, port) VALUES (?, ?)",
-                    (self.host, self.port)
+                    "INSERT INTO DownloadTargets (ip_addr, port, keyword, path) VALUES (?, ?, ?, ?)",
+                    (self.host, self.port, path)
                 )
                 conn.commit()
             except sqlite3.IntegrityError:
@@ -140,10 +140,7 @@ class Target(Scan):
             finally:
                 conn.close()
         
-
-
     def keyword_search(self, path: str):
-        keyword_found = False
         for keyword in merged_list:
             if keyword.lower() in path.lower():
                 with open("output.log", "a") as fp:
@@ -157,8 +154,8 @@ class Target(Scan):
                 conn = sqlite3.connect("db/database.db")
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO DownloadTargets (ip_addr, port) VALUES (?, ?)",
-                    (self.host, self.port)
+                    "INSERT INTO DownloadTargets (ip_addr, port, keyword, path) VALUES (?, ?, ?, ?)",
+                    (self.host, self.port, path)
                 )
                 conn.commit()
             except sqlite3.IntegrityError:
