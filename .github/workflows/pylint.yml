@@ -46,3 +46,5 @@ jobs:
           set -o pipefail
           lizard -w -C 9 -T nloc=40 -L 60 -a 5 DataReaper.py \
             | sed -r 's/(.*):([0-9]*): warning: (.*)/::warning file=\1,line=\2::\3/'
+          lizard -w -C 9 -T nloc=40 -L 60 -a 5 src/*.py \
+            | sed -r 's/(.*):([0-9]*): warning: (.*)/::warning file=\1,line=\2::\3/'
