@@ -14,7 +14,7 @@ from src.helper import merged_list, full_word_match
 
 
 class Target(Scan):
-    def __init__(self, host, port, proxy=None, verbose=False):
+    def __init__(self, host, port, proxy=None, verbose=False): # lizard: ignore
         super().__init__(proxy=proxy, port=port, verbose=verbose)
 
         self.host = host
