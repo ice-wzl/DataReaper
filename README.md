@@ -63,7 +63,7 @@ echo "YOUR_API_KEY_HERE" > api.txt
 ```
 
 ### Step 5: Initialize the Database
-
+This has already been done for you, including it here if you ever need to create a new database.
 The database schema is located in `db/schema.sql`. If the database does not already exist or you need to reinitialize it:
 
 ```
@@ -104,17 +104,17 @@ Note: The `-q` and `-s` options are mutually exclusive. You must choose one per 
 First, query Shodan to populate your database with potential targets:
 
 ```
-python DataReaper.py -q -p 8080
+python DataReaper.py -q -p 8000
 ```
 
-This searches Shodan for servers on port 8080 with exposed directory listings and stores the results in the SQLite database.
+This searches Shodan for servers on port 8000 with exposed directory listings and stores the results in the SQLite database.
 
 **2. Scan the Discovered Targets**
 
 After populating the database, scan the targets to enumerate their exposed files:
 
 ```
-python DataReaper.py -s -p 8080
+python DataReaper.py -s -p 8000
 ```
 
 ### Using Tor for Anonymity
@@ -134,7 +134,7 @@ Download and install the Tor Expert Bundle from https://www.torproject.org/downl
 Then run DataReaper with the `-t` flag pointing to your Tor SOCKS proxy:
 
 ```
-python DataReaper.py -s -p 8080 -t 127.0.0.1:9050
+python DataReaper.py -s -p 8000 -t 127.0.0.1:9050
 ```
 
 ### Examples
