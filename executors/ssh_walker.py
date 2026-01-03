@@ -4,6 +4,7 @@ import ipaddress
 import paramiko
 import posixpath
 import stat
+import os
 
 class Target:
     def __init__(self, host, port, username, password=None, key=None):
@@ -19,24 +20,38 @@ class Target:
             return client
 
     def connect_password(self, client: paramiko.SSHClient):
-        client.connect(
-            hostname=self.host,
-            port=self.port,
-            username=self.username,
-            password=self.password,
-            timeout=10
-        )
-        self.start_directory_walk(client)
+        try:
+            client.connect(
+                hostname=self.host,
+                port=self.port,
+                username=self.username,
+                password=self.password,
+                timeout=10,
+                compress=True,
+                look_for_keys=False
+            )
+            self.start_directory_walk(client)
+        except paramiko.ssh_exception.AuthenticationException:
+            print("[-] authentication failed")
+        except paramiko.ssh_exception.SSHException as e:
+            print(f"[-] Error: {e}")
 
     def connect_key(self, client: paramiko.SSHClient):
-        client.connect(
-            hostname=self.host,
-            port=self.port,
-            username=self.username,
-            key_filename=self.key,
-            timeout=10
-        )
-        self.start_directory_walk(client)
+        try:
+            client.connect(
+                hostname=self.host,
+                port=self.port,
+                username=self.username,
+                key_filename=self.key,
+                timeout=10,
+                compress=True,
+                look_for_keys=False
+            )
+            self.start_directory_walk(client)
+        except paramiko.ssh_exception.AuthenticationException:
+            print("[-] authentication failed")
+        except paramiko.ssh_exception.SSHException as e:
+            print(f"[-] Error: {e}")
 
     def start_directory_walk(self, client: paramiko.SSHClient):
         sftp = client.open_sftp()
@@ -80,6 +95,11 @@ def validate_port(port):
     except ValueError:
         return False
 
+def validate_key_path(key_path):
+    if os.path.exists(key_path):
+        return True
+    return False
+
 
 def main(args):
     if not validate_ip(args.ip_addr):
@@ -94,6 +114,9 @@ def main(args):
         client = target.create_client()
         target.connect_password(client)
     if args.key:
+        if not validate_key_path(args.key):
+            print(f"[-] No such file or directory: {args.key}")
+            return 
         target = Target(args.ip_addr, args.port, args.username, args.key)
         client = target.create_client()
         target.connect_key(client)
