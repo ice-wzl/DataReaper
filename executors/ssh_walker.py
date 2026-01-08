@@ -48,10 +48,8 @@ class Target:
                 look_for_keys=False
             )
             self.start_directory_walk(client)
-        except paramiko.ssh_exception.AuthenticationException:
-            print("[-] authentication failed")
         except paramiko.ssh_exception.SSHException as e:
-            print(f"[-] Error: {e}")
+            print("[-] authentication failed")
 
     def start_directory_walk(self, client: paramiko.SSHClient):
         sftp = client.open_sftp()
@@ -73,7 +71,6 @@ class Target:
         except PermissionError:
             print(f"[DENIED] {path}")
 
-
 def validate_ip(ip_string):
     """
     Validate the ip address to ensure it is well formed
@@ -83,7 +80,6 @@ def validate_ip(ip_string):
         return True
     except ValueError:
         return False
-
 
 def validate_port(port):
     """
@@ -99,7 +95,6 @@ def validate_key_path(key_path):
     if os.path.exists(key_path):
         return True
     return False
-
 
 def main(args):
     if not validate_ip(args.ip_addr):
@@ -120,8 +115,6 @@ def main(args):
         target = Target(args.ip_addr, args.port, args.username, args.key)
         client = target.create_client()
         target.connect_key(client)
-
-    
 
 
 if __name__ == '__main__':
