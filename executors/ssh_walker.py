@@ -27,9 +27,12 @@ class Target:
                 addr=parts[0],
                 port=int(parts[-1])
             )
-
-            sock.connect((self.host, self.port))
-        
+            try:
+                sock.connect((self.host, self.port))
+            except socks.GeneralProxyError as e:
+                print(f"[-] {self.host}:{self.port} - connection refused")
+                return None, None
+                
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         return client, sock
@@ -68,8 +71,6 @@ class Target:
             print(f"[-] {self.host}:{self.port} - connection error: {e}")
         except EOFError:
             print(f"[-] {self.host}:{self.port} - connection closed unexpectedly")
-        except socks.GeneralProxyError:
-            print(f"[-] {self.host}:{self.port} - connection refused")
         return False
 
     def connect_key(self, client: paramiko.SSHClient, sock) -> bool:
@@ -106,8 +107,6 @@ class Target:
             print(f"[-] {self.host}:{self.port} - connection error: {e}")
         except EOFError:
             print(f"[-] {self.host}:{self.port} - connection closed unexpectedly")
-        except socks.GeneralProxyError:
-            print(f"[-] {self.host}:{self.port} - connection refused")
         return False
 
     def start_directory_walk(self, client: paramiko.SSHClient):

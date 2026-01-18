@@ -121,6 +121,9 @@ def do_executor(target: str, usernames_from_pub_keys: set, priv_keys: list, prox
             ssh_target = SSHTarget(proxy_host_port, target, 22, name, key=str(priv_key))
             print(f"[*] {proxy_host_port} -> {ssh_target.username}@{ssh_target.host}:{ssh_target.port} {ssh_target.key}")
             client, sock = ssh_target.create_client()
+            if sock == None:
+                os.remove(priv_key)
+                return # ssh server not listening, move on to the next host
             if ssh_target.connect_key(client, sock):
                 write_accessed_host(ssh_target.host, ssh_target.port, ssh_target.username, ssh_target.key)
                 return # moves onto the next target
