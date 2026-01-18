@@ -89,6 +89,9 @@ def get_contents_from_pub_keys(public_keys: list):
         return get_username_from_file_contents(file_lines)
 
 def get_all_targets(proxy_host_port: str):
+    if not os.path.isdir("downloads"):
+        print("[-] No downloads directory found. Run a scan with -e first to download files.")
+        return
     for target in os.listdir("downloads"):
         if test_ipaddress(target):
             downloaded_files = get_directories(os.path.join("downloads", target))
