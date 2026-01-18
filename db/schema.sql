@@ -19,3 +19,13 @@ CREATE TABLE DownloadTargets(
     keyword TEXT NOT NULL,
     path TEXT NOT NULL
 );
+
+Create Table AccessedHosts(
+    id INT PRIMARY KEY,
+    ip_addr VARCHAR(15) NOT NULL,
+    port INT NOT NULL,
+    username VARCHAR(60) NOT NULL,
+    password VARCHAR(60),
+    key TEXT,
+    survey_output TEXT
+);

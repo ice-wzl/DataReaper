@@ -26,7 +26,7 @@ class Target(Scan):
         self.max_dirs_to_visit = 150
         self.blacklist = [
             "dev/", "venv/", ".cache/", ".npm/", "site-packages/",
-            ".cargo/", ".rustup/", ".nvm/"
+            ".cargo/", ".rustup/", ".nvm/", "X11/"
         ]
 
     def do_scan(self):
