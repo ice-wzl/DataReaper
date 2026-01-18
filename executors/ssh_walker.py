@@ -68,6 +68,8 @@ class Target:
             print(f"[-] {self.host}:{self.port} - connection error: {e}")
         except EOFError:
             print(f"[-] {self.host}:{self.port} - connection closed unexpectedly")
+        except socks.GeneralProxyError:
+            print(f"[-] {self.host}:{self.port} - connection refused")
         return False
 
     def connect_key(self, client: paramiko.SSHClient, sock) -> bool:
@@ -104,6 +106,8 @@ class Target:
             print(f"[-] {self.host}:{self.port} - connection error: {e}")
         except EOFError:
             print(f"[-] {self.host}:{self.port} - connection closed unexpectedly")
+        except socks.GeneralProxyError:
+            print(f"[-] {self.host}:{self.port} - connection refused")
         return False
 
     def start_directory_walk(self, client: paramiko.SSHClient):
