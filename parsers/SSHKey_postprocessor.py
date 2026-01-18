@@ -82,11 +82,13 @@ def get_username_from_file_contents(contents: list):
     return valid_usernames
 
 def get_contents_from_pub_keys(public_keys: list):
+    all_usernames = set()
     for file in public_keys:
         # its either a pub or its authorized_keys
         with open(file, "r") as fp:
             file_lines = fp.readlines()
-        return get_username_from_file_contents(file_lines)
+        all_usernames.update(get_username_from_file_contents(file_lines))
+    return all_usernames
 
 def get_all_targets(proxy_host_port: str):
     if not os.path.isdir("downloads"):
@@ -115,7 +117,7 @@ def do_executor(target: str, usernames_from_pub_keys: set, priv_keys: list, prox
     comb_usernames = list(usernames_from_pub_keys) + usernames
     for priv_key in priv_keys:
         os.chmod(priv_key, 0o600)
-        for name in usernames:
+        for name in comb_usernames:
             ssh_target = SSHTarget(proxy_host_port, target, 22, name, key=str(priv_key))
             print(f"[*] {proxy_host_port} -> {ssh_target.username}@{ssh_target.host}:{ssh_target.port} {ssh_target.key}")
             client, sock = ssh_target.create_client()
