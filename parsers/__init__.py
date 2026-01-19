@@ -1,4 +1,4 @@
-from parsers.SSHKey_postprocessor import (
+from parsers.ssh_key_process import (
     get_directories,
     test_ipaddress,
     test_directory,

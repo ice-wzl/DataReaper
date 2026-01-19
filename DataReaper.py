@@ -15,23 +15,6 @@ from src.helper import *
 from executors import SSHTarget
 from parsers import get_all_targets
 
-# add in a processor that will look for ssh keys in the downloads directory
-# grab the ssh keys and attempt to auth via tor with your executor 
-# if successful write to the database username ssh key ip address port
-# if failed with root then see if there is a public key in the same directory 
-# cat the key and try to get a username, then try to auth with that
-# if that fails then try to auth with 10 or so common usernames
-# if all fails then remove the keys we dont want them anyways
-# add a size checker and if its above x dont download it
-
-# add some post processors that remove useless junk, going to be hard
-# might be able to test for different file types, not sure could remove the good stuff then too
-
-# can also add a .bash_history scanner that detects commands with likely passwords in them 
-# telnet 
-# mysql 
-# psql etc etc 
-# if we detect su or sudo (maybe look for misspellings of the word) we can grab what is after it to get a password that was entered as a mistake?
 
 def opsec_check(session: requests.Session):
     try:
