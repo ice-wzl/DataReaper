@@ -96,7 +96,7 @@ def get_all_targets(proxy_host_port: str):
 def do_executor(target: str, usernames_from_pub_keys: set, priv_keys: list, proxy_host_port: str):
     usernames = ["root", "admin", "test", "guest", "info", "adm",
                  "mysql", "user", "ubuntu", "administrator", "oracle", "ftp",
-                 "pi", "puppet", "ansible", "ec2-user", "vagrant",
+                 "pi", "debian", "ansible", "ec2-user", "vagrant",
                  "azureuser"]
     comb_usernames = list(usernames_from_pub_keys) + usernames
     for priv_key in priv_keys:
