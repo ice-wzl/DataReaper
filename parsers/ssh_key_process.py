@@ -5,28 +5,12 @@ import ipaddress
 import sqlite3
 
 from executors.ssh_walker import Target as SSHTarget
-
+from parsers.parser_helpers import get_directories
+from parsers.parser_helpers import test_ipaddress
+from parsers.parser_helpers import test_directory
+from parsers.parser_helpers import ensure_downloads
 
 # should add support for putty and other ssh clients 
-
-# list all directories starting in the downloads dir 
-def get_directories(dir_path_root: str):
-    p = Path(dir_path_root)
-    return [item for item in p.rglob("*")]
-
-# test if ip address is valid or not
-def test_ipaddress(address: str):
-    try:
-        ipaddress.ip_address(address)
-        return True
-    except ValueError:
-        return False
-
-# test if the file path is file or directory 
-def test_directory(posix_path: Path) -> bool:
-    if posix_path.is_dir():
-        return True
-    return False
 
 # get all file paths with .ssh in them 
 def get_ssh_files(file_list: list):
@@ -91,7 +75,7 @@ def get_contents_from_pub_keys(public_keys: list):
     return all_usernames
 
 def get_all_targets(proxy_host_port: str):
-    if not os.path.isdir("downloads"):
+    if not ensure_downloads():
         print("[-] No downloads directory found. Run a scan with -e first to download files.")
         return
     for target in os.listdir("downloads"):
@@ -111,7 +95,7 @@ def get_all_targets(proxy_host_port: str):
 
 def do_executor(target: str, usernames_from_pub_keys: set, priv_keys: list, proxy_host_port: str):
     usernames = ["root", "admin", "test", "guest", "info", "adm",
-                 "mysql", "user", "administrator", "oracle", "ftp",
+                 "mysql", "user", "ubuntu", "administrator", "oracle", "ftp",
                  "pi", "puppet", "ansible", "ec2-user", "vagrant",
                  "azureuser"]
     comb_usernames = list(usernames_from_pub_keys) + usernames
@@ -141,9 +125,5 @@ def write_accessed_host(host: str, port: int, username: str, key: str):
     cursor.execute("INSERT INTO AccessedHosts (ip_addr, port, username, key) VALUES (?, ?, ?, ?)", (host, port, username, key))
     conn.commit()
     conn.close()
-
-
-
-
 
 
