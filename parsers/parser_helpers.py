@@ -22,6 +22,7 @@ def test_directory(posix_path: Path) -> bool:
         return True
     return False
 
+# ensure the downloads directory exists
 def ensure_downloads():
     if not os.path.isdir("downloads"):
         return False

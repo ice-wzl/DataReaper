@@ -23,7 +23,6 @@ def search_shadow_files(targets: list):
         # pass to host file parser
         test_shadow_file(target, downloaded_files)
 
-
 def test_shadow_file(ip_addr: str, list_files: list):
     for file in list_files:
         if "/" in str(file):
@@ -31,7 +30,6 @@ def test_shadow_file(ip_addr: str, list_files: list):
             if file_parts[-1] == "shadow" and file_parts[-2] == "etc":
                 shadow_cont = read_shadow(str(file))
                 search_hashes(ip_addr, shadow_cont)
-
 
 def read_shadow(shadow_file: str):
     with open(shadow_file, "r") as fp:
@@ -48,7 +46,6 @@ def search_hashes(ip_addr: str, shadow_cont: list):
         pw_hash = line_parts[1]
         write_results_to_text(line)
         write_results_to_db(ip_addr, username, pw_hash)
-
 
 def write_results_to_db(ip_addr: str, username: str, hash: str):
     conn = sqlite3.connect("db/database.db")

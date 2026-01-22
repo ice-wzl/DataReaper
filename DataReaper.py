@@ -94,7 +94,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog="Data Scraper",
+        prog="Data Reaper",
         description="Query Shodan for indexable HTTP servers and enumerate exposed files"
     )
 
