@@ -34,5 +34,6 @@ Create Table Hashes(
     id INT PRIMARY KEY,
     ip_addr VARCHAR(15) NOT NULL,
     username VARCHAR(60) NOT NULL,
-    hash TEXT NOT NULL
+    hash TEXT NOT NULL,
+    UNIQUE (ip_addr, username, hash)
 );

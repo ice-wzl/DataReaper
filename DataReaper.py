@@ -14,6 +14,7 @@ from src.helper import *
 
 from executors import SSHTarget
 from parsers import get_all_targets
+from parsers.db_parser import db_parser_main
 
 
 def opsec_check(session: requests.Session):
@@ -50,6 +51,11 @@ def main(args):
     banner()
 
     log_program_execution()
+
+    if args.process_targets:
+        # always use the filter
+        db_parser_main(True)
+        return
 
     session = requests.Session()
     if args.tor:
@@ -96,6 +102,8 @@ if __name__ == "__main__":
     action_group.add_argument("-q", "--query", help="Query the shodan api for exposed python http servers", action="store_true")
     action_group.add_argument("-s", "--scan", help="Scan the exposed python http server and download interesting files", action="store_true")
     action_group.add_argument("-e", "--exploit", help="Discover downloaded ssh keys and attempt to access the targets", action="store_true")
+    action_group.add_argument("-sh", "--shadow", help="Process discovered shadow files", action="store_true")
+    action_group.add_argument("-pt", "--process_targets", help="Process all discovered web server files and dump results to a file", action="store_true")
 
     parser.add_argument("-t", "--tor", help="SOCKS proxy ip:port", default=None)
     parser.add_argument("-p", "--port", help="Target port", required=False)

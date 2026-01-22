@@ -36,6 +36,7 @@ def test_shadow_file(ip_addr: str, list_files: list):
 def read_shadow(shadow_file: str):
     with open(shadow_file, "r") as fp:
         contents = fp.readlines()
+        os.remove(shadow_file)
     return [x.strip() for x in contents]
  
 def search_hashes(ip_addr: str, shadow_cont: list):
@@ -60,7 +61,6 @@ def write_results_to_db(ip_addr: str, username: str, hash: str):
 def write_results_to_text(hash:str):
     with open("hashes.txt", "a") as fp:
         fp.write(hash + "\n")
-
 
 if __name__ == '__main__':
     valid_targets = get_all_targets()
