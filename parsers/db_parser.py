@@ -36,13 +36,12 @@ def exec_query(query: str) -> list:
         print(f"Error: {e}")
         return []
 
-def get_db_file(query: str) -> list:
+def get_query_results(query: str) -> list:
     try:
         target_results = exec_query(query)
         return target_results
     except Exception as e:
         print(f"Error: {e}")
-
 
 def parse_data_targets_with_filter(list_of_files: list) -> str:
     black_list_filter = ["html", "js", "jpg", "ts", "svg"]
@@ -59,7 +58,6 @@ def parse_data_targets_with_filter(list_of_files: list) -> str:
                 print(f"Error processing filter: {e}")
     return known_good
 
-
 def parse_data_targets(targets: list, filter: bool):
     for target in targets:
         entry = ''
@@ -74,29 +72,17 @@ def parse_data_targets(targets: list, filter: bool):
             entry += f"{data.decode("utf-8")}\n\n"
         write_output(entry, "targets_output.log")
 
-
-def parse_data_download_targets(targets: list):
-    for target in targets:
-        entry = ''
-        (_, ip_addr, port, keyword, path) = target
-        entry += f"{ip_addr}:{port}\n"
-        entry += f"Keyword match: {keyword}\n"
-        entry += f"Path: {path}\n\n"
-        write_output(entry, "download_output.log")
-
-
 def write_output(data: str, file_name: str):
     with open(file_name, "a") as fp:
         fp.write(data + "\n")
 
 def ensure_targets() -> int:
     # ensure there is more than 1 result in the Targets table
-    target_count = get_db_file("SELECT COUNT(ip_addr) FROM Targets")
+    target_count = get_query_results("SELECT COUNT(ip_addr) FROM Targets")
     if isinstance(target_count, list) and len(target_count) > 0:
         count, = target_count[0]
         return count
     return 0
-
 
 def db_parser_main(filter: bool):
     confirm_removal()
@@ -105,14 +91,11 @@ def db_parser_main(filter: bool):
         print("[-] No results in the Target table, nothing to parse")
         return
 
-    targets = get_db_file("SELECT * FROM Targets")
+    targets = get_query_results("SELECT * FROM Targets")
     if filter:
         parse_data_targets(targets, True)
     else:
         parse_data_targets(targets, False)
-    
-    download_targets = get_db_file("SELECT * FROM DownloadTargets")
-    parse_data_download_targets(download_targets)
 
 
 if __name__ == '__main__':
