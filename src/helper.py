@@ -1,4 +1,6 @@
+import sqlite3
 from colorama import Fore
+from datetime import datetime
 
 full_word_match = [
     ".ash_history",
@@ -240,3 +242,25 @@ def banner():
                                           ice-wzl
     """ + Fore.RESET
     )
+
+def exec_sql_query(query: str) -> list:
+  conn = sqlite3.connect("db/database.db")
+  cursor = conn.cursor()
+  cursor.execute(query)
+  results = cursor.fetchall()
+  cursor.close()
+  return results
+
+def warning() -> bool:
+    print("[!] You are about to connect to targets without utilizing a proxy")
+    choice = input("[!] Are you sure you want to do that? [y/N]: ").strip().lower()
+    if choice in {"yes", "y"}:
+        return True
+    # be more inclusive with the no option
+    return False
+
+def log_program_execution() -> None:
+    with open("runtime.log", "a") as fp:
+        dt = datetime.now()
+        format_date = dt.strftime("%Y-%m-%d %H:%M:%S")
+        fp.write(f"started script {format_date}\n")

