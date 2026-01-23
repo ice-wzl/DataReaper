@@ -24,7 +24,7 @@ def get_ssh_files(file_list: list):
             ssh_files.append(file)
     return ssh_files
 
-def get_bash_history_files():
+def get_bash_history_files(file_list: list):
     bash_hist_files = []
     for file in file_list:
         posix_path_str = str(file)
