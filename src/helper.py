@@ -1,3 +1,7 @@
+"""Helper module containing keyword lists, banner, and utility functions."""
+import sqlite3
+from datetime import datetime
+
 from colorama import Fore
 
 full_word_match = [
@@ -212,6 +216,7 @@ merged_list = [
     ]
 
 def banner():
+    """Display the DataReaper ASCII banner."""
     print(
         Fore.RED +
         r"""
@@ -240,3 +245,28 @@ def banner():
                                           ice-wzl
     """ + Fore.RESET
     )
+
+def exec_sql_query(query: str) -> list:
+    """Execute a SQL query and return the results."""
+    conn = sqlite3.connect("db/database.db")
+    cursor = conn.cursor()
+    cursor.execute(query)
+    results = cursor.fetchall()
+    cursor.close()
+    return results
+
+def warning() -> bool:
+    """Warn user about connecting without a proxy."""
+    print("[!] You are about to connect to targets without utilizing a proxy")
+    choice = input("[!] Are you sure you want to do that? [y/N]: ").strip().lower()
+    if choice in {"yes", "y"}:
+        return True
+    # be more inclusive with the no option
+    return False
+
+def log_program_execution() -> None:
+    """Log the program execution timestamp to runtime.log."""
+    with open("runtime.log", "a", encoding="utf-8") as fp:
+        dt = datetime.now()
+        format_date = dt.strftime("%Y-%m-%d %H:%M:%S")
+        fp.write(f"started script {format_date}\n")
