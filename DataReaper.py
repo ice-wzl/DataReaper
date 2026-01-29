@@ -48,11 +48,33 @@ def get_download_targets(proxy, verbose):
             download_requests = Download(host, port, path, proxy=proxy, verbose=verbose)
             executor.submit(download_requests.do_download)
 
+def cmd_query(args):
+    if args.query and not args.port:
+        print("[-] -p port required for a query.")
+        return
+    scan = Scan(
+        proxy=args.tor,
+        port=args.port,
+        verbose=args.verbose
+    )
+    scan.run_query(
+        f'Title:"Directory listing for /" port:{args.port}'
+    )
+
+def cmd_scan(args):
+    get_targets(args.tor, args.verbose)
+    get_download_targets(args.tor, args.verbose)
+
+def cmd_exploit(args):
+    if not args.tor:
+        if not warning():
+            return
+    get_all_targets(args.tor)
+
 
 def main(args):
     """Main entry point for DataReaper."""
     banner()
-
     log_program_execution()
 
     if args.process_targets:
@@ -69,29 +91,14 @@ def main(args):
     if not args.noninteractive:
         opsec_check(session)
 
-    if args.query and not args.port:
-        print("[-] -p port required for a query.")
-        return
-
     if args.query:
-        scan = Scan(
-            proxy=args.tor,
-            port=args.port,
-            verbose=args.verbose
-        )
-        scan.run_query(
-            f'Title:"Directory listing for /" port:{args.port}'
-        )
+        cmd_query(args)
 
     if args.scan:
-        get_targets(args.tor, args.verbose)
-        get_download_targets(args.tor, args.verbose)
-
+        cmd_scan(args)
+        
     if args.exploit:
-        if not args.tor:
-            if not warning():
-                return
-        get_all_targets(args.tor)
+        cmd_exploit(args)
 
 
 if __name__ == "__main__":
