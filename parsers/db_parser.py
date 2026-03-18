@@ -4,27 +4,7 @@ import base64
 import os
 import sqlite3
 
-def confirm_removal():
-    """Prompt user to remove output files from previous runs."""
-    targets_file = os.path.join(os.getcwd(), "targets_output.log")
-    download_file = os.path.join(os.getcwd(), "download_output.log")
-    if os.path.exists(targets_file):
-        choice = input(f"{targets_file} detected from past run, remove [Y/n]: ")
-
-        if choice.lower() in ("y", "yes", ""):
-            os.remove(targets_file)
-        elif choice.lower() in ("n", "no"):
-            pass
-        else:
-            confirm_removal()
-    if os.path.exists(download_file):
-        choice = input(f"{download_file} detected from past run, remove [Y/n]: ")
-        if choice.lower() in ("y", "yes", ""):
-            os.remove(download_file)
-        elif choice.lower() in ("n", "no"):
-            pass
-        else:
-            confirm_removal()
+from datetime import date
 
 def exec_query(query: str) -> list:
     """Execute a SQL query and return results."""
@@ -62,7 +42,7 @@ def parse_data_targets_with_filter(list_of_files: list) -> str:
                 print(f"Error processing filter: {err}")
     return known_good
 
-def parse_data_targets(targets: list, apply_filter: bool):
+def parse_data_targets(targets: list, apply_filter: bool) -> None:
     for target in targets:
         entry = ''
         (_, ip_addr, port, date_seen, data_based) = target
@@ -74,9 +54,9 @@ def parse_data_targets(targets: list, apply_filter: bool):
             entry += parse_data_targets_with_filter(list_of_files) + "\n"
         else:
             entry += f"{data.decode("utf-8")}\n\n"
-        write_output(entry, "targets_output.log")
+        write_output(entry, f"targets_output_{get_current_date()}.log")
 
-def write_output(data: str, file_name: str):
+def write_output(data: str, file_name: str) -> None:
     """Append data to the specified output file."""
     with open(file_name, "a", encoding="utf-8") as fp:
         fp.write(data + "\n")
@@ -89,27 +69,39 @@ def ensure_targets() -> int:
         return count
     return 0
 
-def db_parser_main(apply_filter: bool):
+def get_current_date()-> date:
+    return date.today()
+
+def get_todays_scan() -> None:
+    target_results = get_query_results(f'SELECT * FROM Targets WHERE scan_date LIKE "{get_current_date()}%"')
+    parse_data_targets(target_results, False)
+
+def db_parser_main(apply_filter: bool, today_only: bool) -> None:
     """Main entry point for database parsing."""
-    confirm_removal()
+    # problem for cron job 
     count = ensure_targets()
     if count == 0:
         print("[-] No results in the Target table, nothing to parse")
         return
-
-    targets = get_query_results("SELECT * FROM Targets")
-    if apply_filter:
-        parse_data_targets(targets, True)
+    if today_only:
+        get_todays_scan()
     else:
-        parse_data_targets(targets, False)
+        targets = get_query_results("SELECT * FROM Targets")
+        if apply_filter:
+            parse_data_targets(targets, True)
+        else:
+            parse_data_targets(targets, False)
 
 
 if __name__ == '__main__':
     opts = argparse.ArgumentParser(description="A short script to parse out what DataReaper has been seeing")
     opts.add_argument("-f", "--filter", help="Filter out common junk that we dont usually care about", action="store_true")
+    opts.add_argument("-t", "--today", help="Only parse out open directory listings from today", action="store_true")
     args = opts.parse_args()
 
     if args.filter:
-        db_parser_main(True)
+        db_parser_main(True, False)
+    elif args.today:
+        db_parser_main(False, True)
     else:
-        db_parser_main(False)
+        db_parser_main(False, False)
