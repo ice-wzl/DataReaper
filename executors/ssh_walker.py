@@ -126,10 +126,12 @@ class Target:
 
     def walk_sftp(self, sftp, path):
         """Recursively walk SFTP directory tree."""
+        black_list = ["/proc", "/sys"]
         try:
             for entry in sftp.listdir_attr(path):
                 full_path = posixpath.join(path, entry.filename)
-
+                if full_path in black_list:
+                    continue
                 if stat.S_ISDIR(entry.st_mode):
                     print(f"[DIR ] {full_path}")
                     self.walk_sftp(sftp, full_path)
