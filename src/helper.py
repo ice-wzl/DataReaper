@@ -199,6 +199,7 @@ merged_list = [
         "bruteforce",
         "CrystalLens",
         "payload.apk",
+        "Cl0p",
         "Mythic",
         "credentials.yml",
         "strelka",

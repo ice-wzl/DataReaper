@@ -130,6 +130,7 @@ class Target:
         try:
             for entry in sftp.listdir_attr(path):
                 full_path = posixpath.join(path, entry.filename)
+                print(entry.filename)
                 if full_path in black_list:
                     continue
                 if stat.S_ISDIR(entry.st_mode):
