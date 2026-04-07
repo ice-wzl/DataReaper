@@ -8,5 +8,6 @@ from parsers.ssh_key_process import (
     get_username_from_file_contents,
     get_contents_from_pub_keys,
     get_all_targets,
+    check_downloads_dir,
     do_executor,
 )

