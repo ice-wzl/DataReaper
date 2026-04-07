@@ -1,9 +1,9 @@
-"""Class called Scan which handles retrieving of the api key and making a query request to the Shodan api"""
-
+"""Scan module for querying Shodan API and setting up scanning sessions."""
 import ipaddress
-import shodan
 import sqlite3
+
 import requests
+import shodan
 
 
 class Scan:
@@ -24,6 +24,7 @@ class Scan:
                 raise RuntimeError(err)
 
     def run_query(self, query):
+        """Execute a Shodan query and store results."""
         api, err = self.setup_api()
         if api is None:
             raise RuntimeError(err)
@@ -63,7 +64,7 @@ class Scan:
         Get the api key from the file in order to query the api later
         """
         try:
-            with open("api.txt", "r") as fp:
+            with open("api.txt", "r", encoding="utf-8") as fp:
                 api_key = fp.read().strip()
                 if self.verbose:
                     print(f"API key used: {api_key}")
@@ -72,6 +73,7 @@ class Scan:
             return None, "api.txt not found"
 
     def do_query(self, api, query):
+        """Perform the actual Shodan API search."""
         try:
             if self.verbose:
                 print(f"Query: {query}")
@@ -95,8 +97,8 @@ class Scan:
                     (service["ip_str"], self.port),
                 )
                 conn.commit()
-            except sqlite3.IntegrityError as e:
-                # unique contraint will fail, expected
+            except sqlite3.IntegrityError:
+                # unique constraint will fail, expected
                 pass
 
         conn.close()
@@ -112,9 +114,7 @@ class Scan:
             return False
 
     def validate_port(self, port):
-        """
-        Ensure the provided port is within the valid range
-        """
+        """Ensure the provided port is within the valid range."""
         try:
             port = int(port)
             return 0 < port <= 65535

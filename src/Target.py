@@ -1,14 +1,15 @@
-"""Class Target controls the scanning and parsing of individual targets. It will also protect the scanner from entering
-into blacklisted directories, along with establishing recursion protection for the scanner. The target class controls
-how the host is interacted with."""
+"""Target module for scanning and parsing individual HTTP servers.
 
+Protects against blacklisted directories and implements recursion protection.
+"""
 import base64
 import sqlite3
-from colorama import Fore
 from datetime import datetime
 from urllib.parse import urljoin
+
 from bs4 import BeautifulSoup
-from requests.exceptions import ConnectionError, Timeout, RequestException
+from colorama import Fore
+from requests.exceptions import Timeout, RequestException
 
 from src.Scan import Scan
 from src.helper import merged_list, full_word_match
@@ -44,7 +45,7 @@ class Target(Scan):
             print(f"{url} --> Status Code: {r.status_code}")
 
             self.parse_html(r.content, base_path="")
-            self.write_directories_to_db(self.results)
+            self.write_directories_to_db()
 
         except (ConnectionError, Timeout, RequestException):
             print(Fore.RED + f"{self.host} not responsive" + Fore.RESET)
@@ -53,7 +54,6 @@ class Target(Scan):
             self.delete_scan_request()
 
     def do_scan_directory(self, target_uri):
-        # 100 directories gives us a good idea of dir contents, recusion protection
         if len(self.visited) > self.max_dirs_to_visit:
             return
 
@@ -97,7 +97,8 @@ class Target(Scan):
             if href.endswith("/") and href not in self.blacklist:
                 self.do_scan_directory(full_path)
 
-    def write_directories_to_db(self, data: str):
+    def write_directories_to_db(self):
+        """Write scan results to the database."""
         try:
             conn = sqlite3.connect("db/database.db")
             cursor = conn.cursor()
@@ -109,23 +110,23 @@ class Target(Scan):
                 (self.host, self.port, sql_datetime, results),
             )
             conn.commit()
-        except sqlite3.IntegrityError as e:
-            print(e)
-            pass
+        except sqlite3.IntegrityError as err:
+            print(err)
         conn.close()
 
     def delete_scan_request(self):
+        """Remove the current host from the ToScan table."""
         try:
             conn = sqlite3.connect("db/database.db")
             cursor = conn.cursor()
             cursor.execute("DELETE FROM ToScan WHERE ip_addr = ?", (self.host,))
             conn.commit()
-        except sqlite3.IntegrityError as e:
-            print(e)
-            pass
+        except sqlite3.IntegrityError as err:
+            print(err)
         conn.close()
 
     def keyword_search_full_words(self, path: str):
+        """Search for exact keyword matches in path components."""
         path_parts = path.split("/")
         if len(path_parts) == 0:
             return
@@ -146,6 +147,7 @@ class Target(Scan):
                 break
 
     def keyword_search(self, path: str):
+        """Search for partial keyword matches in the path."""
         for keyword in merged_list:
             if keyword.lower() in path.lower():
                 try:

@@ -1,8 +1,44 @@
+"""Helper module containing keyword lists, banner, and utility functions."""
+import sqlite3
+from datetime import datetime
+
 from colorama import Fore
 
 full_word_match = [
     ".ash_history",
     ".bash_history",
+    "backups",
+    "badvpn",
+    "Neo-reGeorg",
+    "neoreg.log",
+    "rce.sh",
+    "reverse_socks.py",
+    "run_tunnel.sh",
+    "scan_ports.sh",
+    "scripts",
+    "SERVICIOS.TXT",
+    "shell.php",
+    "ssh_keys",
+    "telnet.py",
+    "test_all_gadgets.py",
+    "test_and_extract.sh",
+    "test_ldap.sh",
+    "test_ldap_deep.sh",
+    "test_ognl_xxe.py",
+    "test_rfc_input.py",
+    "test_sleep.py",
+    "test_sqli_ssrf.py",
+    "test_tunnel.sh",
+    "test_upload.py",
+    "tunnel_configs",
+    "tunnel_keeper.sh",
+    "tunnel_keeper_1086.sh",
+    "tunnel_master_keeper.sh",
+    "tunnel_master_keeper_v2.sh",
+    "turbo_client.py",
+    "upload_analyze.py",
+    "upload_rce.sh",
+    "upload_tunnel.sh",
     ".zsh_history",
     ".csh_history",
     ".ksh_history",
@@ -125,6 +161,7 @@ full_word_match = [
     "shadow",
     "Shadowsocks-4.4.1.0.zip",
     "socat",
+    "bugbounty",
     "ssh-tools",
     "scraper.py",
     "scraper_selenium.py",
@@ -142,6 +179,11 @@ full_word_match = [
 ]
 merged_list = [
     ".aws",
+    ".anydesk",
+    ".armitage.prop",
+    ".claude.json",
+    ".claude.json.backup",
+    ".nc_history",
     ".msf4",
     ".msf6",
     ".p12",
@@ -155,6 +197,12 @@ merged_list = [
     "0day",
     "brute_ratel",
     "bruteforce",
+    "CrystalLens",
+    "payload.apk",
+    "Cl0p",
+    "Mythic",
+    "credentials.yml",
+    "strelka",
     "cert.crt",
     "cobalt-strike",
     "cobalt_strike",
@@ -213,7 +261,10 @@ merged_list = [
 
 
 def banner():
-    print(Fore.RED + r"""
+    """Display the DataReaper ASCII banner."""
+    print(
+        Fore.RED
+        + r"""
                ...                            
              ;::::;                           
            ;::::; :;                          
@@ -237,4 +288,33 @@ def banner():
    ::::::`:::::;'  /  /   `#              v.3.0.0
                                   Made by Aznable,
                                           ice-wzl
-    """ + Fore.RESET)
+    """
+        + Fore.RESET
+    )
+
+
+def exec_sql_query(query: str) -> list:
+    """Execute a SQL query and return the results."""
+    conn = sqlite3.connect("db/database.db")
+    cursor = conn.cursor()
+    cursor.execute(query)
+    results = cursor.fetchall()
+    cursor.close()
+    return results
+
+
+def warning() -> bool:
+    """Warn user about connecting without a proxy."""
+    print("[!] You are about to connect to targets without utilizing a proxy")
+    choice = input("[!] Are you sure you want to do that? [y/N]: ").strip().lower()
+    if choice in {"yes", "y"}:
+        return True
+    return False
+
+
+def log_program_execution() -> None:
+    """Log the program execution timestamp to runtime.log."""
+    with open("runtime.log", "a", encoding="utf-8") as fp:
+        dt = datetime.now()
+        format_date = dt.strftime("%Y-%m-%d %H:%M:%S")
+        fp.write(f"started script {format_date}\n")
