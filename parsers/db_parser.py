@@ -6,10 +6,14 @@ import sqlite3
 
 from datetime import date
 
+BASE_DIR = os.getcwd()
+output_dir = os.path.join(BASE_DIR, "scan_results")
+DB_PATH = os.path.join(BASE_DIR, "db", "database.db")
+
 def exec_query(query: str) -> list:
     """Execute a SQL query and return results."""
     try:
-        conn = sqlite3.connect("db/database.db")
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(query)
         results = cursor.fetchall()
@@ -54,7 +58,7 @@ def parse_data_targets(targets: list, apply_filter: bool) -> None:
             entry += parse_data_targets_with_filter(list_of_files) + "\n"
         else:
             entry += f"{data.decode("utf-8")}\n\n"
-        write_output(entry, f"targets_output_{get_current_date()}.log")
+        write_output(entry, os.path.join(output_dir, f"targets_output_{get_current_date()}.log"))
 
 def write_output(data: str, file_name: str) -> None:
     """Append data to the specified output file."""
@@ -72,7 +76,13 @@ def ensure_targets() -> int:
 def get_current_date()-> date:
     return date.today()
 
+def ensure_output_dir():
+    if os.path.isdir(output_dir):
+        return
+    os.mkdir(output_dir)
+
 def get_todays_scan() -> None:
+    print(f'SELECT * FROM Targets WHERE scan_date LIKE "{get_current_date()}%"')
     target_results = get_query_results(f'SELECT * FROM Targets WHERE scan_date LIKE "{get_current_date()}%"')
     parse_data_targets(target_results, False)
 
@@ -83,6 +93,7 @@ def db_parser_main(apply_filter: bool, today_only: bool) -> None:
     if count == 0:
         print("[-] No results in the Target table, nothing to parse")
         return
+    ensure_output_dir()
     if today_only:
         get_todays_scan()
     else:
