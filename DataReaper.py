@@ -78,17 +78,17 @@ def main(args):
     if args.query and not args.port:
         print("[-] -p port required for a query.")
         return
-
+    
+    # do not place the opsec_check above this line
     session = requests.Session()
-
-    if not args.noninteractive:
-        external_ip = opsec_check(session)
-
     if args.tor:
         session.proxies.update({
             "http":  f"socks5h://{args.tor}",
             "https": f"socks5h://{args.tor}",
         })
+    
+    if not args.noninteractive:
+        external_ip = opsec_check(session)
 
     if args.query:
         scan = Scan(

@@ -1,15 +1,20 @@
 #!/usr/bin/python3
+"""SSH walker for connecting to and enumerating remote hosts via SSH."""
 import argparse
 import ipaddress
-import paramiko
-import posixpath
-import stat
 import os
-import socks
+import posixpath
 import socket
+import stat
+
+import paramiko
+import socks
 
 class Target:
-    def __init__(self, proxy_host_port, host, port, username, password=None, key=None):
+    """SSH target for connecting and enumerating remote hosts."""
+
+    def __init__(self, proxy_host_port, host, port, username,  # lizard: ignore
+                 password=None, key=None) -> None:
         self.proxy_host_port = proxy_host_port
         self.host = host
         self.port = port
@@ -17,9 +22,10 @@ class Target:
         self.password = password
         self.key = key
 
-    def create_client(self):
+    def create_client(self) -> tuple[paramiko.SSHClient(), None]:
+        """Create SSH client and optional SOCKS proxy socket."""
         sock = None
-        if self.proxy_host_port != None:
+        if self.proxy_host_port is not None:
             parts = self.proxy_host_port.split(":")
             sock = socks.socksocket()
             sock.set_proxy(
@@ -29,17 +35,18 @@ class Target:
             )
             try:
                 sock.connect((self.host, self.port))
-            except socks.GeneralProxyError as e:
+            except socks.GeneralProxyError:
                 print(f"[-] {self.host}:{self.port} - connection refused")
                 return None, None
-                
+
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         return client, sock
 
     def connect_password(self, client: paramiko.SSHClient, sock) -> bool:
+        """Attempt SSH connection using password authentication."""
         try:
-            if socks != None:
+            if sock is not None:
                 client.connect(
                 hostname=self.host,
                 port=self.port,
@@ -74,8 +81,9 @@ class Target:
         return False
 
     def connect_key(self, client: paramiko.SSHClient, sock) -> bool:
+        """Attempt SSH connection using key-based authentication."""
         try:
-            if sock != None:
+            if sock is not None:
                 client.connect(
                     hostname=self.host,
                     port=self.port,
@@ -109,17 +117,24 @@ class Target:
             print(f"[-] {self.host}:{self.port} - connection closed unexpectedly")
         return False
 
-    def start_directory_walk(self, client: paramiko.SSHClient):
+    def start_directory_walk(self, client: paramiko.SSHClient) -> None:
+        """Start SFTP directory enumeration from root."""
         sftp = client.open_sftp()
         self.walk_sftp(sftp, "/")
         sftp.close()
         client.close()
+    
+    def ensure_output_dir():
+        if os.path
 
-    def walk_sftp(self, sftp, path):
+    def walk_sftp(self, sftp, path) -> None:
+        """Recursively walk SFTP directory tree."""
+        black_list = ["/proc", "/sys", "/snap", "/dev", "/usr/share", "/usr/src", "/usr/snap"]
         try:
             for entry in sftp.listdir_attr(path):
                 full_path = posixpath.join(path, entry.filename)
-
+                if full_path in black_list:
+                    continue
                 if stat.S_ISDIR(entry.st_mode):
                     print(f"[DIR ] {full_path}")
                     self.walk_sftp(sftp, full_path)
@@ -129,66 +144,68 @@ class Target:
         except PermissionError:
             print(f"[DENIED] {path}")
 
-def validate_ip(ip_string):
-    """
-    Validate the ip address to ensure it is well formed
-    """
+def validate_ip(ip_string) -> bool:
+    """Validate the ip address to ensure it is well formed."""
     try:
         ipaddress.ip_address(ip_string)
         return True
     except ValueError:
         return False
 
-def validate_port(port):
-    """
-    Ensure the provided port is within the valid range
-    """
+def validate_port(port) -> bool:
+    """Ensure the provided port is within the valid range."""
     try:
         port = int(port)
         return 0 < port <= 65535
     except ValueError:
         return False
 
-def validate_key_path(key_path):
-    if os.path.exists(key_path):
-        return True
-    return False
+def validate_key_path(key_path) -> bool:
+    """Check if the key file exists."""
+    return os.path.exists(key_path)
 
-def main(args):
+
+def main(args) -> None:
+    """Main entry point for standalone SSH walker."""
     if not validate_ip(args.ip_addr):
         print(f"[-] Invalid ip address provided: {args.ip_addr}")
         return
     if not validate_port(args.port):
         print(f"[-] Invalid port provided: {args.port}")
         return
-    
+
     if args.password:
-        target = Target(args.ip_addr, args.port, args.username, args.password)
+        target = Target(None, args.ip_addr, args.port, args.username, args.password)
         client, sock = target.create_client()
-        if sock != None:
+        if sock is not None:
             target.connect_password(client, sock)
         else:
             target.connect_password(client, None)
     if args.key:
         if not validate_key_path(args.key):
             print(f"[-] No such file or directory: {args.key}")
-            return 
-        target = Target(args.ip_addr, args.port, args.username, args.key)
+            return
+        target = Target(None, args.ip_addr, args.port, args.username, key=args.key)
         client, sock = target.create_client()
-        if sock != None:
+        if sock is not None:
             target.connect_key(client, sock)
         else:
             target.connect_key(client, None)
 
+
 if __name__ == '__main__':
-    opts = argparse.ArgumentParser(description="Tool to walk directories in a remote host")
-    opts.add_argument("-i", "--ip_addr", help="The ip address to connect to", required=True, type=str)
-    opts.add_argument("-p", "--port", help="The remote port to connect to [Default: 22]", default=22, required=True)
-    opts.add_argument("-u", "--username", help="The username to use on the remote host", required=True, type=str)
+    opts = argparse.ArgumentParser(description="SSH directory walker")
+    opts.add_argument("-i", "--ip_addr", required=True, type=str,
+                      help="The IP address to connect to")
+    opts.add_argument("-p", "--port", default=22, required=True,
+                      help="Remote port [Default: 22]")
+    opts.add_argument("-u", "--username", required=True, type=str,
+                      help="Username for remote host")
     authentication_group = opts.add_mutually_exclusive_group(required=True)
-    authentication_group.add_argument("-P", "--password", help="The password to use", type=str)
-    authentication_group.add_argument("-k", "--key", help="The private key to use", type=str)
+    authentication_group.add_argument("-P", "--password", type=str,
+                                      help="Password for authentication")
+    authentication_group.add_argument("-k", "--key", type=str,
+                                      help="Private key file path")
 
     args = opts.parse_args()
-
     main(args)

