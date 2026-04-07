@@ -1,6 +1,7 @@
 """Class Target controls the scanning and parsing of individual targets. It will also protect the scanner from entering
 into blacklisted directories, along with establishing recursion protection for the scanner. The target class controls
 how the host is interacted with."""
+
 import base64
 import sqlite3
 from colorama import Fore
@@ -14,7 +15,7 @@ from src.helper import merged_list, full_word_match
 
 
 class Target(Scan):
-    def __init__(self, host, port, proxy=None, verbose=False): # lizard: ignore
+    def __init__(self, host, port, proxy=None, verbose=False):  # lizard: ignore
         super().__init__(proxy=proxy, port=port, verbose=verbose)
 
         self.host = host
@@ -25,8 +26,15 @@ class Target(Scan):
         self.results = ""
         self.max_dirs_to_visit = 150
         self.blacklist = [
-            "dev/", "venv/", ".cache/", ".npm/", "site-packages/",
-            ".cargo/", ".rustup/", ".nvm/", "X11/"
+            "dev/",
+            "venv/",
+            ".cache/",
+            ".npm/",
+            "site-packages/",
+            ".cargo/",
+            ".rustup/",
+            ".nvm/",
+            "X11/",
         ]
 
     def do_scan(self):
@@ -45,7 +53,7 @@ class Target(Scan):
             self.delete_scan_request()
 
     def do_scan_directory(self, target_uri):
-         # 100 directories gives us a good idea of dir contents, recusion protection
+        # 100 directories gives us a good idea of dir contents, recusion protection
         if len(self.visited) > self.max_dirs_to_visit:
             return
 
@@ -61,8 +69,11 @@ class Target(Scan):
             print(f"{url} --> Status Code: {r.status_code}")
             self.parse_html(r.content, base_path=target_uri)
         except (ConnectionError, Timeout, RequestException):
-            print(Fore.RED + f"{self.host}:{self.port}/{target_uri} not responsive" + Fore.RESET)
-
+            print(
+                Fore.RED
+                + f"{self.host}:{self.port}/{target_uri} not responsive"
+                + Fore.RESET
+            )
 
     def parse_html(self, content, base_path):
         soup = BeautifulSoup(content.decode("utf-8", errors="ignore"), "html.parser")
@@ -86,7 +97,6 @@ class Target(Scan):
             if href.endswith("/") and href not in self.blacklist:
                 self.do_scan_directory(full_path)
 
-
     def write_directories_to_db(self, data: str):
         try:
             conn = sqlite3.connect("db/database.db")
@@ -94,13 +104,15 @@ class Target(Scan):
             results = base64.b64encode(self.results.encode("utf-8"))
             dt = datetime.now()
             sql_datetime = dt.strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute("INSERT INTO Targets (ip_addr, port, scan_date, results) VALUES (?, ?, ?, ?)",
-            (self.host, self.port, sql_datetime, results))
+            cursor.execute(
+                "INSERT INTO Targets (ip_addr, port, scan_date, results) VALUES (?, ?, ?, ?)",
+                (self.host, self.port, sql_datetime, results),
+            )
             conn.commit()
         except sqlite3.IntegrityError as e:
-                print(e)
-                pass
-        conn.close()  
+            print(e)
+            pass
+        conn.close()
 
     def delete_scan_request(self):
         try:
@@ -111,12 +123,12 @@ class Target(Scan):
         except sqlite3.IntegrityError as e:
             print(e)
             pass
-        conn.close()  
+        conn.close()
 
     def keyword_search_full_words(self, path: str):
         path_parts = path.split("/")
         if len(path_parts) == 0:
-            return 
+            return
         for keyword in full_word_match:
             if keyword.lower() in path_parts:
                 try:
@@ -124,7 +136,7 @@ class Target(Scan):
                     cursor = conn.cursor()
                     cursor.execute(
                         "INSERT INTO DownloadTargets (ip_addr, port, keyword, path) VALUES (?, ?, ?, ?)",
-                        (self.host, self.port, keyword, path)
+                        (self.host, self.port, keyword, path),
                     )
                     conn.commit()
                 except sqlite3.IntegrityError:
@@ -132,7 +144,7 @@ class Target(Scan):
                 finally:
                     conn.close()
                 break
-        
+
     def keyword_search(self, path: str):
         for keyword in merged_list:
             if keyword.lower() in path.lower():
@@ -141,7 +153,7 @@ class Target(Scan):
                     cursor = conn.cursor()
                     cursor.execute(
                         "INSERT INTO DownloadTargets (ip_addr, port, keyword, path) VALUES (?, ?, ?, ?)",
-                        (self.host, self.port, keyword, path)
+                        (self.host, self.port, keyword, path),
                     )
                     conn.commit()
                 except sqlite3.IntegrityError:
