@@ -46,6 +46,9 @@ class Target:
             except socks.GeneralProxyError:
                 print(f"[-] {self.host}:{self.port} - connection refused")
                 return None, None
+            except paramiko.ssh_exception.SSHException:
+                print(f"[-] {self.host}:{self.port} - error reading SSH protocol banner")
+                return None, None
 
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -146,6 +149,9 @@ class Target:
             "/usr/share",
             "/usr/src",
             "/usr/snap",
+            "/usr/local/lib",
+            "/usr/lib",
+            "/usr/lib/modules",
         ]
         try:
             for entry in sftp.listdir_attr(path):

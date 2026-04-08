@@ -136,8 +136,6 @@ def get_all_targets(proxy_host_port: str):
         if len(ssh_files) == 0 and len(bash_hist_files) == 0:
             continue
         bash_hist_usernames = get_content_from_bash_histories(bash_hist_files)
-        print(f"bash hist usernames found: {bash_hist_usernames}")
-
         list_of_private_keys = get_private_key(ssh_files)
         list_of_public_keys = get_public_keys(ssh_files)
         usernames_ssh_keys = get_contents_from_pub_keys(list_of_public_keys)
