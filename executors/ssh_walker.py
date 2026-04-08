@@ -10,6 +10,8 @@ import stat
 import paramiko
 import socks
 
+BASE_DIR = os.getcwd()
+output_dir = os.path.join(BASE_DIR, "survey_results")
 
 class Target:
     """SSH target for connecting and enumerating remote hosts."""
@@ -113,7 +115,7 @@ class Target:
                     look_for_keys=False,
                 )
             print(f"Success with: {self.host}:{self.port} {self.username} {self.key}")
-            self.start_directory_walk(client)
+            self.start_directory_walk(client, self.host)
             return True
         except paramiko.ssh_exception.AuthenticationException:
             print(f"[-] {self.host}:{self.port} - authentication failed")
@@ -125,15 +127,17 @@ class Target:
             print(f"[-] {self.host}:{self.port} - connection closed unexpectedly")
         return False
 
-    def start_directory_walk(self, client: paramiko.SSHClient):
+    def start_directory_walk(self, client: paramiko.SSHClient, ip_addr: str):
         """Start SFTP directory enumeration from root."""
         sftp = client.open_sftp()
-        self.walk_sftp(sftp, "/")
+        self.walk_sftp(sftp, "/", ip_addr)
         sftp.close()
         client.close()
 
-    def walk_sftp(self, sftp, path):
+    def walk_sftp(self, sftp: client.open_sftp(), path: str, ip_addr: str):
         """Recursively walk SFTP directory tree."""
+        ensure_output_dir()
+
         black_list = [
             "/proc",
             "/sys",
@@ -149,13 +153,33 @@ class Target:
                 if full_path in black_list:
                     continue
                 if stat.S_ISDIR(entry.st_mode):
-                    print(f"[DIR ] {full_path}")
+                    print(f"[DIR] {full_path}")
+                    write_output(
+                        f"[DIR] {full_path}",
+                        os.path.join(output_dir, f"{ip_addr}_survey_{get_current_date()}.log"),
+                    )
                     self.walk_sftp(sftp, full_path)
                 else:
                     print(f"[FILE] {full_path}")
+                    write_output(
+                        f"[FILE] {full_path}",
+                        os.path.join(output_dir, f"{ip_addr}_output_{get_current_date()}.log"),
+                    )
 
         except PermissionError:
             print(f"[DENIED] {path}")
+
+
+def ensure_output_dir():
+    if os.path.isdir(output_dir):
+        return
+    os.mkdir(output_dir)
+
+
+def write_output(data: str, file_name: str) -> None:
+    """Append data to the specified output file."""
+    with open(file_name, "a", encoding="utf-8") as fp:
+        fp.write(data + "\n")
 
 
 def validate_ip(ip_string):
