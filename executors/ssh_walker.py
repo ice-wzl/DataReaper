@@ -137,7 +137,7 @@ class Target:
         sftp.close()
         client.close()
 
-    def walk_sftp(self, sftp: client.open_sftp(), path: str, ip_addr: str):
+    def walk_sftp(self, sftp, path: str, ip_addr: str):
         """Recursively walk SFTP directory tree."""
         ensure_output_dir()
 
