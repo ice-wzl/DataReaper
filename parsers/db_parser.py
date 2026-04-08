@@ -93,7 +93,6 @@ def ensure_output_dir():
 
 
 def get_todays_scan() -> None:
-    print(f'SELECT * FROM Targets WHERE scan_date LIKE "{get_current_date()}%"')
     target_results = get_query_results(
         f'SELECT * FROM Targets WHERE scan_date LIKE "{get_current_date()}%"'
     )
