@@ -7,6 +7,7 @@ from requests.exceptions import Timeout, RequestException
 
 from src.Scan import Scan
 
+
 class Download(Scan):
     """Download handler for retrieving files from HTTP servers."""
 
@@ -39,7 +40,7 @@ class Download(Scan):
         directory_chain = []
         for i in directories_to_create:
             directory_chain.append(i)
-            target_dir = download_directory_root + "/" + '/'.join(directory_chain)
+            target_dir = download_directory_root + "/" + "/".join(directory_chain)
             if not os.path.exists(target_dir):
                 os.mkdir(target_dir)
 
@@ -75,7 +76,9 @@ class Download(Scan):
         try:
             conn = sqlite3.connect("db/database.db")
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM DownloadTargets WHERE ip_addr = ?", (self.host,))
+            cursor.execute(
+                "DELETE FROM DownloadTargets WHERE ip_addr = ?", (self.host,)
+            )
             conn.commit()
         except sqlite3.IntegrityError as err:
             print(err)

@@ -5,10 +5,12 @@ import sqlite3
 import requests
 import shodan
 
+
 class Scan:
     """
     Scan class for querying the shodan api and setting up the scanning session
     """
+
     def __init__(self, proxy=None, port=None, verbose=False):
         self.proxy = proxy
         self.port = port
@@ -49,12 +51,13 @@ class Scan:
             return None, "invalid ip provided"
 
         s = requests.Session()
-        s.proxies.update({
-            "http":  f"socks5h://{socks_proxy_host_port}",
-            "https": f"socks5h://{socks_proxy_host_port}",
-        })
+        s.proxies.update(
+            {
+                "http": f"socks5h://{socks_proxy_host_port}",
+                "https": f"socks5h://{socks_proxy_host_port}",
+            }
+        )
         return s, ""
-
 
     def setup_api(self):
         """
@@ -79,7 +82,6 @@ class Scan:
             print(f"Shodan API error: {e}")
             return None
 
-
     def write_query_results(self, results):
         """
         Insert the returned results in the database, only grab the ip and port
@@ -92,7 +94,7 @@ class Scan:
             try:
                 cursor.execute(
                     "INSERT INTO ToScan (ip_addr, port) VALUES (?, ?)",
-                    (service["ip_str"], self.port)
+                    (service["ip_str"], self.port),
                 )
                 conn.commit()
             except sqlite3.IntegrityError:
@@ -100,7 +102,6 @@ class Scan:
                 pass
 
         conn.close()
-
 
     def validate_ip(self, ip_string):
         """
@@ -111,7 +112,6 @@ class Scan:
             return True
         except ValueError:
             return False
-
 
     def validate_port(self, port):
         """Ensure the provided port is within the valid range."""

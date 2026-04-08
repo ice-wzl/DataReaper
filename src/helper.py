@@ -175,95 +175,96 @@ full_word_match = [
     "windows_server_2012_r2_standard_eval_kvm_20170321.qcow2",
     "wg",
     "webssh.py",
-    "xray"
+    "xray",
 ]
 merged_list = [
-        ".aws",
-        ".anydesk",
-        ".armitage.prop",
-        ".claude.json",
-        ".claude.json.backup",
-        ".nc_history",
-        ".msf4",
-        ".msf6",
-        ".p12",
-        ".pem",
-        ".pfx",
-        ".python_history",
-        ".ssh",
-        ".viminfo",
-        ".wg-easy",
-        ".wget-hsts",
-        "0day",
-        "brute_ratel",
-        "bruteforce",
-        "CrystalLens",
-        "payload.apk",
-        "Cl0p",
-        "Mythic",
-        "credentials.yml",
-        "strelka",
-        "cert.crt",
-        "cobalt-strike",
-        "cobalt_strike",
-        "crt.key",
-        "crt.pem",
-        "crypter",
-        "Desktop",
-        "Documents",
-        "Downloads",
-        "dropper_cs.exe",
-        "exploit",
-        "gorailgun",
-        "gost",
-        "hack",
-        "hacking",
-        "havoc",
-        "id_dsa",
-        "id_ecdsa",
-        "id_ed25519",
-        "id_rsa",
-        "key.key",
-        "key.pem",
-        "lockbit",
-        "log4j",
-        "malware",
-        "metasploit",
-        "mrlapis",
-        "nessus",
-        "ngrok",
-        "nmap",
-        "notes",
-        "nuclei",
-        "passwd",
-        "proxy_server",
-        "password",
-        "payload",
-        "pp_id_rsa.ppk",
-        "priv_key",
-        "qakbot",
-        "qbot",
-        "ransom",
-        "ransomware",
-        "ratel",
-        "redlinestealer",
-        "revil",
-        "shellcode",
-        "sliver",
-        "sqlmap",
-        "ssh_rsa.pem",
-        "tencentcloud_files",
-        "victim",
-        "wireguard",
-        "wormhole",
-        "wpscan"
-    ]
+    ".aws",
+    ".anydesk",
+    ".armitage.prop",
+    ".claude.json",
+    ".claude.json.backup",
+    ".nc_history",
+    ".msf4",
+    ".msf6",
+    ".p12",
+    ".pem",
+    ".pfx",
+    ".python_history",
+    ".ssh",
+    ".viminfo",
+    ".wg-easy",
+    ".wget-hsts",
+    "0day",
+    "brute_ratel",
+    "bruteforce",
+    "CrystalLens",
+    "payload.apk",
+    "Cl0p",
+    "Mythic",
+    "credentials.yml",
+    "strelka",
+    "cert.crt",
+    "cobalt-strike",
+    "cobalt_strike",
+    "crt.key",
+    "crt.pem",
+    "crypter",
+    "Desktop",
+    "Documents",
+    "Downloads",
+    "dropper_cs.exe",
+    "exploit",
+    "gorailgun",
+    "gost",
+    "hack",
+    "hacking",
+    "havoc",
+    "id_dsa",
+    "id_ecdsa",
+    "id_ed25519",
+    "id_rsa",
+    "key.key",
+    "key.pem",
+    "lockbit",
+    "log4j",
+    "malware",
+    "metasploit",
+    "mrlapis",
+    "nessus",
+    "ngrok",
+    "nmap",
+    "notes",
+    "nuclei",
+    "passwd",
+    "proxy_server",
+    "password",
+    "payload",
+    "pp_id_rsa.ppk",
+    "priv_key",
+    "qakbot",
+    "qbot",
+    "ransom",
+    "ransomware",
+    "ratel",
+    "redlinestealer",
+    "revil",
+    "shellcode",
+    "sliver",
+    "sqlmap",
+    "ssh_rsa.pem",
+    "tencentcloud_files",
+    "victim",
+    "wireguard",
+    "wormhole",
+    "wpscan",
+]
+
 
 def banner():
     """Display the DataReaper ASCII banner."""
     print(
-        Fore.RED +
-        r"""
+        Fore.RED
+        + r"""
                ...                            
              ;::::;                           
            ;::::; :;                          
@@ -287,8 +288,10 @@ def banner():
    ::::::`:::::;'  /  /   `#              v.3.0.0
                                   Made by Aznable,
                                           ice-wzl
-    """ + Fore.RESET
+    """
+        + Fore.RESET
     )
+
 
 def exec_sql_query(query: str) -> list:
     """Execute a SQL query and return the results."""
@@ -299,14 +302,15 @@ def exec_sql_query(query: str) -> list:
     cursor.close()
     return results
 
+
 def warning() -> bool:
     """Warn user about connecting without a proxy."""
     print("[!] You are about to connect to targets without utilizing a proxy")
     choice = input("[!] Are you sure you want to do that? [y/N]: ").strip().lower()
     if choice in {"yes", "y"}:
         return True
-    # be more inclusive with the no option
     return False
+
 
 def log_program_execution() -> None:
     """Log the program execution timestamp to runtime.log."""

