@@ -181,8 +181,7 @@ def do_executor(
                 f"{ssh_target.host}:{ssh_target.port} {ssh_target.key}"
             )
             client, sock = ssh_target.create_client()
-            if sock is None:
-                os.remove(priv_key)
+            if client is None:
                 return
             if ssh_target.connect_key(client, sock):
                 write_accessed_host(
