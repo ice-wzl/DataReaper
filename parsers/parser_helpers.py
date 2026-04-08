@@ -13,6 +13,8 @@ def get_directories(dir_path_root: str):
 
 def test_ipaddress(address: str):
     """Validate if the given string is a valid IP address."""
+    if ":" in address:
+        address = address.split(":")[0]
     try:
         ipaddress.ip_address(address)
         return True

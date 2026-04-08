@@ -69,9 +69,10 @@ def get_username_from_file_contents(contents: list):
     valid_usernames = set()
     blacklist = ["generated-by-azure", "imported-openssh-key"]
     for line in contents:
-        if len(line.split(" ")) != 3:
+        sanitized_line = [x.strip() for x in line.split() if x]
+        if len(sanitized_line) < 3:
             continue
-        username = line.split(" ")[-1].strip()
+        username = sanitized_line[-1]
         if username in blacklist:
             continue
         if "@" in username:
@@ -168,6 +169,8 @@ def do_executor(
         "vagrant",
         "azureuser",
     ]
+    if ":" in target:
+        target = target.split(":")[0]
     comb_usernames = list(usernames_from_pub_keys) + usernames
     for priv_key in priv_keys:
         os.chmod(priv_key, 0o600)
